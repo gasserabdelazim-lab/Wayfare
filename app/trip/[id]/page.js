@@ -200,33 +200,41 @@ export default function TripPage() {
         const traveler = myTraveler();
         if (!traveler) return;
         const existing = (votesByActivity[activityId] || []).find((v) => v.traveler_id === traveler.id);
-        if (existing && existing.value === value) {
-                await supabase.from("votes").delete().eq("id", existing.id);
-        } else if (existing) {
-                await supabase.from("votes").update({ value }).eq("id", existing.id);
-        } else {
-                await supabase.from("votes").insert({ activity_id: activityId, traveler_id: traveler.id, value });
-        }
+if (existing && existing.value === value) {
+          await supabase.from("votes").delete().eq("id", existing.id);
+} else {
+          await supabase
+            .from("votes")
+            .upsert(
+                { activity_id: activityId, traveler_id: traveler.id, value },
+                { onConflict: "activity_id,traveler_id" }
+                        );
+}
+          load();
   }
 
   async function addComment(activityId, text) {
         const traveler = myTraveler();
         if (!traveler || !text.trim()) return;
         await supabase.from("comments").insert({ activity_id: activityId, traveler_id: traveler.id, text: text.trim() });
+          load();
   }
-
+  
   async function updateActivity(id, fields) {
         await supabase.from("activities").update(fields).eq("id", id);
+      load();
   }
 
   async function deleteActivity(id) {
         if (!confirm("Remove this activity for everyone?")) return;
         await supabase.from("activities").delete().eq("id", id);
+      load();
   }
 
   async function deleteExtraCost(id) {
         if (!confirm("Remove this cost?")) return;
         await supabase.from("extra_costs").delete().eq("id", id);
+      load();
   }
 
   async function addActivity(prefillName) {
@@ -246,6 +254,7 @@ export default function TripPage() {
           .single();
         setNewActivity({ day_label: newActivity.day_label, day_date: newActivity.day_date, name: "" });
         if (data) setJustAddedId(data.id);
+      load();
   }
 
   async function addExtraCost() {
@@ -255,6 +264,7 @@ export default function TripPage() {
                 trip_id: tripId, description: costForm.desc.trim(), amount: val, paid_by: costForm.paidBy
         });
         setCostForm({ desc: "", amt: "", paidBy: "" });
+      load();
   }
 
   function statusOf(activityId) {
