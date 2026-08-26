@@ -22,13 +22,6 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-/* Icon spans render raw <svg> via dangerouslySetInnerHTML with width/height
-   set on the wrapping <span>; without this the svg ignores that and falls
-   back to its intrinsic size, rendering far too large. Percentage sizing on
-   the svg only works if its parent span is a sized block-level box, so the
-   span itself must be inline-block (a plain inline span can't be
-   percentage-sized against). A default svg size keeps icons sane even
-   where no explicit width/height style is passed. */
 span:has(> svg) { display: inline-block; }
 svg { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
 span > svg { width: 100%; height: 100%; display: block; }
@@ -66,7 +59,6 @@ input:focus, textarea:focus, select:focus {
       border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-tint);
 }
 
-/* ---------- Home page ---------- */
 .home-wrap { padding-top: 40px; }
 .home-hero { margin-bottom: 8px; }
 .home-hero h1 { font-size: 32px; }
@@ -77,7 +69,6 @@ input:focus, textarea:focus, select:focus {
 .gold-dot { background: var(--gold); }
 .teal-dot { background: var(--teal); }
 
-/* ---------- Trip header ---------- */
 .trip-header {
       position: relative; background: linear-gradient(135deg, var(--primary), var(--primary-deep));
       color: #fff; border-radius: var(--radius);
@@ -103,14 +94,12 @@ input:focus, textarea:focus, select:focus {
 .share-btn:hover { background: rgba(255,255,255,.26); }
 .share-btn:active { transform: scale(.97); }
 
-/* ---------- Avatars ---------- */
 .avatar {
       display: inline-flex; align-items: center; justify-content: center;
       border-radius: 50%; color: #fff; font-weight: 700;
       flex-shrink: 0; letter-spacing: -0.02em;
 }
 
-/* ---------- Empty / suggestion states ---------- */
 .empty-state {
       text-align: center; background: var(--card); border: 1.5px dashed var(--line); border-radius: var(--radius);
       padding: 36px 20px; margin-bottom: 12px;
@@ -130,7 +119,6 @@ input:focus, textarea:focus, select:focus {
 .suggestion-chip:hover { background: #e0deff; }
 .suggestion-chip:active { transform: scale(.96); }
 
-/* ---------- Day groups & activity cards ---------- */
 .day-label-row {
       display: flex; align-items: baseline; justify-content: space-between;
       margin: 24px 0 10px; padding: 0 2px;
@@ -227,11 +215,9 @@ input:focus, textarea:focus, select:focus {
       border-radius: 20px; background: var(--bg); color: var(--ink); padding: 4px 10px; font-weight: 500;
 }
 
-/* ---------- Sections ---------- */
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin: 30px 0 12px; }
 .sec-head h2 { font-size: 19px; }
 
-/* ---------- Costs ---------- */
 .cost-card, .settle-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); }
 .cost-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
 .cost-total .num { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; }
@@ -259,7 +245,6 @@ input:focus, textarea:focus, select:focus {
 .add-cost button:hover { background: var(--primary-deep); }
 
 
-/* ---------- Settle up ---------- */
 .settle-headline {
       font-family: 'Fraunces', serif; font-size: 18px; padding-bottom: 16px; margin-bottom: 6px;
       border-bottom: 1px solid var(--line);
@@ -280,10 +265,8 @@ input:focus, textarea:focus, select:focus {
 .transfer-row svg { width: 14px; height: 14px; color: var(--sub); flex-shrink: 0; }
 .transfer-amt { margin-left: auto; font-weight: 700; color: var(--ink); }
 
-/* ---------- Footnote ---------- */
 .footnote { margin-top: 32px; font-size: 12.5px; color: var(--sub); line-height: 1.6; text-align: center; }
 
-/* ---------- Cards / forms shared ---------- */
 .home-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; margin-top: 20px; box-shadow: var(--shadow-sm); }
 .home-card input { width: 100%; font-size: 14px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); padding: 11px 13px; background: var(--bg); color: var(--ink); }
 .home-card button {
@@ -294,7 +277,6 @@ input:focus, textarea:focus, select:focus {
 .home-card button:hover { background: var(--primary-deep); }
 .home-card button:active { transform: scale(.98); }
 
-/* ---------- Name gate ---------- */
 .name-gate { text-align: center; padding: 60px 20px; }
 .name-gate input { font-size: 15px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); padding: 11px 16px; margin-top: 16px; width: 240px; text-align: center; }
 .name-gate button { display: block; margin: 14px auto 0; font-weight: 600; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); padding: 11px 22px; cursor: pointer; transition: background .12s; }
@@ -308,7 +290,6 @@ input:focus, textarea:focus, select:focus {
 }
 .traveler-chip:hover { border-color: var(--primary); }
 
-/* ---------- Tab bar ---------- */
 .tabbar {
       position: fixed; left: 0; right: 0; bottom: 0; background: var(--card);
       border-top: 1px solid var(--line); display: flex; z-index: 30;
@@ -329,13 +310,11 @@ input:focus, textarea:focus, select:focus {
 }
 .tab-btn-wrap { position: relative; flex: 1; display: flex; }
 
-/* ---------- Friends / balances tab ---------- */
 .friend-summary-card {
       background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px;
       box-shadow: var(--shadow-sm); margin-bottom: 16px;
 }
 
-/* ---------- Groups tab ---------- */
 .group-member-row {
       display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line);
 }
@@ -343,7 +322,6 @@ input:focus, textarea:focus, select:focus {
 .group-member-name { font-weight: 600; font-size: 14.5px; }
 .group-member-you { font-size: 11.5px; color: var(--primary-deep); font-weight: 600; background: var(--primary-tint); border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
 
-/* ---------- Activity feed tab ---------- */
 .feed-item {
       display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line);
 }
@@ -359,7 +337,6 @@ input:focus, textarea:focus, select:focus {
 .feed-time { font-size: 11.5px; color: var(--sub); margin-top: 2px; }
 .feed-empty { text-align: center; padding: 50px 20px; color: var(--sub); font-size: 13.5px; }
 
-/* ---------- Floating add button ---------- */
 .fab {
       position: fixed; bottom: 82px; right: 20px; width: 52px; height: 52px; border-radius: 50%;
       background: var(--primary); color: #fff; border: none; box-shadow: var(--shadow-lg);
@@ -369,8 +346,94 @@ input:focus, textarea:focus, select:focus {
 .fab:hover { transform: scale(1.06); background: var(--primary-deep); }
 .fab:active { transform: scale(.95); }
 
+.trips-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.new-trip-btn {
+      font-size: 13px; font-weight: 700; background: var(--primary); color: #fff; border: none;
+      border-radius: 20px; padding: 10px 18px; cursor: pointer; white-space: nowrap;
+      transition: transform .08s, background .12s;
+}
+.new-trip-btn:hover { background: var(--primary-deep); }
+.new-trip-btn:active { transform: scale(.96); }
+.home-card select { width: 100%; font-size: 14px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); padding: 11px 13px; background: var(--bg); color: var(--ink); }
+.trip-card-list { display: flex; flex-direction: column; gap: 12px; margin-top: 22px; }
+.trip-card {
+      display: block; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--shadow-sm); text-decoration: none; color: inherit;
+      transition: transform .12s, box-shadow .12s, border-color .12s;
+}
+.trip-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--primary-tint); }
+.trip-card:active { transform: translateY(0) scale(.99); }
+.trip-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.trip-card-name { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; }
+.trip-card-range { font-size: 12px; color: var(--sub); white-space: nowrap; }
+.trip-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.trip-card-total { font-size: 12.5px; color: var(--sub); font-weight: 600; }
+
+.back-to-trips {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+      color: rgba(255,255,255,.8); text-decoration: none; margin-bottom: 10px; transition: color .12s;
+}
+.back-to-trips:hover { color: #fff; }
+.trip-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.icon-round-btn {
+      width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.3); cursor: pointer;
+      transition: background .12s, transform .08s;
+}
+.icon-round-btn:hover { background: rgba(255,255,255,.26); }
+.icon-round-btn:active { transform: scale(.93); }
+.currency-menu-wrap { position: relative; }
+.currency-menu {
+      position: absolute; top: 42px; right: 0; background: var(--card); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg); border: 1px solid var(--line); padding: 8px; width: 220px; z-index: 40;
+      max-height: 320px; overflow-y: auto;
+}
+.currency-menu-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--sub); padding: 6px 8px 4px; }
+.currency-menu-item {
+      display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none;
+      text-align: left; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--ink);
+      transition: background .1s;
+}
+.currency-menu-item:hover { background: var(--bg); }
+.currency-menu-item.active { background: var(--primary-tint); color: var(--primary-deep); font-weight: 600; }
+.currency-menu-symbol { width: 22px; flex-shrink: 0; font-weight: 700; text-align: center; }
+
+.progress-track {
+      display: flex; height: 5px; border-radius: 3px; overflow: hidden; margin-top: 14px;
+      background: rgba(255,255,255,.18);
+}
+.progress-seg { display: block; height: 100%; transition: width .3s ease; }
+.progress-agreed { background: var(--green); }
+.progress-contested { background: var(--red); }
+
+.location-field-editing { position: relative; }
+.location-dropdown {
+      position: absolute; top: calc(100% + 4px); left: 0; min-width: 240px; max-width: 320px;
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg); z-index: 50; overflow: hidden;
+}
+.location-dropdown-item {
+      display: flex; align-items: flex-start; gap: 8px; padding: 9px 12px; font-size: 12.5px; color: var(--ink);
+      cursor: pointer; transition: background .1s; line-height: 1.4;
+}
+.location-dropdown-item:hover { background: var(--primary-tint); color: var(--primary-deep); }
+.location-dropdown-item svg { margin-top: 2px; flex-shrink: 0; color: var(--sub); }
+.location-dropdown-loading { color: var(--sub); cursor: default; }
+.location-dropdown-loading:hover { background: none; color: var(--sub); }
+
+.transfer-row { flex-wrap: wrap; }
+.settle-btn {
+      display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;
+      font-size: 11.5px; font-weight: 700; background: var(--green-tint); color: var(--green);
+      border: none; border-radius: 20px; padding: 6px 12px; cursor: pointer; transition: background .12s, transform .08s;
+}
+.settle-btn:hover { background: #d3f3e3; }
+.settle-btn:active { transform: scale(.94); }
+.feed-icon.feed-settle { background: var(--green-tint); color: var(--green); }
+
 @media (max-width: 480px) {
       .wrap { padding: 18px 14px 110px; }
       .trip-header { padding: 18px 16px 16px; }
       .trip-header h1 { font-size: 21px; }
+      .currency-menu { right: -40px; }
 }
