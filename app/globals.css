@@ -24,9 +24,12 @@
 html { scroll-behavior: smooth; }
 /* Icon spans render raw <svg> via dangerouslySetInnerHTML with width/height
    set on the wrapping <span>; without this the svg ignores that and falls
-   back to its intrinsic size, rendering far too large. A default size keeps
-   icons sane even where no explicit width/height style is passed and no
-   more specific "<parent> svg" rule applies. */
+   back to its intrinsic size, rendering far too large. Percentage sizing on
+   the svg only works if its parent span is a sized block-level box, so the
+   span itself must be inline-block (a plain inline span can't be
+   percentage-sized against). A default svg size keeps icons sane even
+   where no explicit width/height style is passed. */
+span:has(> svg) { display: inline-block; }
 svg { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
 span > svg { width: 100%; height: 100%; display: block; }
 body {
