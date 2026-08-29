@@ -708,6 +708,8 @@ export default function TripPage() {
               const comments = commentsByActivity[a.id] || [];
               const isTop = a.id === topId && up > 0;
               const isJustAdded = a.id === justAddedId;
+              const editableLocation = a.location === "Add exact location" ? "" : (a.location || "");
+              const editableTime = a.time_text === "Add time" ? "" : (a.time_text || "");
               return (
                 <div
                   className={`item${isJustAdded ? " item-flash" : ""}`}
@@ -727,9 +729,9 @@ export default function TripPage() {
                     </div>
                   </div>
                   <div className="item-meta activity-editors">
-                    <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={a.location || ""} tripName={trip.name} onCommit={(location) => updateActivity(a.id, { location: location || null })} /></div>
+                    <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={editableLocation} tripName={trip.name} onCommit={(location) => updateActivity(a.id, { location: location || null })} /></div>
                     <label className="inline-field inline-cost-field"><Icon name="coin" /><span className="currency-prefix">{CURRENCIES[currency].symbol}</span><input key={`cost-${a.id}-${a.cost_pp || 0}`} aria-label="Cost per person" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={a.cost_pp || ""} placeholder="0" onFocus={(event) => event.currentTarget.select()} onBlur={(event) => { const value = parseFloat(event.target.value); updateActivity(a.id, { cost_pp: value > 0 ? value : 0 }); }} /><small>pp</small></label>
-                    <label className="inline-field inline-time-field"><Icon name="clock" /><select aria-label="Activity time" value={a.time_text || ""} onChange={(event) => updateActivity(a.id, { time_text: event.target.value || null })}><option value="">Add time</option>{a.time_text && !TIME_OPTIONS.includes(a.time_text) && <option value={a.time_text}>{a.time_text}</option>}{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></label>
+                    <label className="inline-field inline-time-field"><Icon name="clock" /><select aria-label="Activity time" value={editableTime} onChange={(event) => updateActivity(a.id, { time_text: event.target.value || null })}><option value="">Add time</option>{editableTime && !TIME_OPTIONS.includes(editableTime) && <option value={editableTime}>{editableTime}</option>}{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></label>
                     {a.cost_pp > 0 && (
                       <select className="paid-select" value={a.paid_by || ""} onChange={(e) => updateActivity(a.id, { paid_by: e.target.value || null })}>
                         <option value="">who paid?</option>
