@@ -337,6 +337,9 @@ export default function TripPage() {
   const extrasTotal = extraCosts.reduce((sum, c) => sum + Number(c.amount), 0);
   const total = itemsTotal + extrasTotal;
   const share = travelers.length ? total / travelers.length : 0;
+  const paidItemsTotal = activities.reduce((sum, a) => sum + (a.cost_pp > 0 && a.paid_by ? a.cost_pp * travelers.length : 0), 0);
+  const paidExtrasTotal = extraCosts.reduce((sum, c) => sum + (c.paid_by ? Number(c.amount) : 0), 0);
+  const settlementShare = travelers.length ? (paidItemsTotal + paidExtrasTotal) / travelers.length : 0;
 
   const paid = {};
   travelers.forEach((t) => (paid[t.id] = 0));
@@ -346,7 +349,7 @@ export default function TripPage() {
   extraCosts.forEach((c) => {
     if (c.paid_by) paid[c.paid_by] = (paid[c.paid_by] || 0) + Number(c.amount);
   });
-  const balances = travelers.map((t) => ({ id: t.id, name: t.name, net: Math.round(((paid[t.id] || 0) - share) * 100) / 100 }));
+  const balances = travelers.map((t) => ({ id: t.id, name: t.name, net: Math.round(((paid[t.id] || 0) - settlementShare) * 100) / 100 }));
   const debtors = balances.filter((b) => b.net < -0.5).map((b) => ({ ...b, amt: -b.net })).sort((a, b) => b.amt - a.amt);
   const creditors = balances.filter((b) => b.net > 0.5).map((b) => ({ ...b, amt: b.net })).sort((a, b) => b.amt - a.amt);
   const transfers = [];
