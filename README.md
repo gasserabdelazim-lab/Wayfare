@@ -1,5 +1,16 @@
 # Wayfare — setup
 
+## Upgrading an existing Wayfare database
+
+This version adds a shared trip currency. If your Supabase project already uses
+the original schema, run this once in **Supabase → SQL Editor** before deploying:
+
+```sql
+alter table trips add column if not exists currency text not null default 'EUR';
+```
+
+New projects can run the complete `supabase/schema.sql` file as usual.
+
 Everything here is real, working code. These are the few things only you can do
 (account creation), each takes a couple of minutes.
 
