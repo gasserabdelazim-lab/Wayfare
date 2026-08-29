@@ -89,6 +89,114 @@ function suggestedLocations(query, tripName) {
   return [...new Set([...matches, contextual, clean])].slice(0, 6);
 }
 
+function formatPlaceResult(feature) {
+  const place = feature?.properties || {};
+  return [...new Set([
+    place.name,
+    place.street,
+    place.district,
+    place.city || place.town || place.village,
+    place.state,
+    place.country,
+  ].filter(Boolean))].join(", ");
+}
+
+function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compact = false }) {
+  const [query, setQuery] = useState(value || "");
+  const [remoteResults, setRemoteResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const queryRef = useRef(value || "");
+
+  useEffect(() => {
+    const next = value || "";
+    setQuery(next);
+    queryRef.current = next;
+  }, [value]);
+
+  useEffect(() => {
+    const clean = query.trim();
+    if (!open || clean.length < 2) {
+      setRemoteResults([]);
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const search = tripName && !clean.toLowerCase().includes(tripName.toLowerCase()) ? `${clean}, ${tripName}` : clean;
+        const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(search)}&limit=6&lang=en`, { signal: controller.signal });
+        if (!response.ok) throw new Error("Place search failed");
+        const payload = await response.json();
+        setRemoteResults((payload.features || []).map(formatPlaceResult).filter(Boolean));
+      } catch (error) {
+        if (error.name !== "AbortError") setRemoteResults([]);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 320);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, open, tripName]);
+
+  const fallbackResults = suggestedLocations(query, tripName);
+  const results = [...new Set([...remoteResults, ...fallbackResults])].filter((place) => place.toLowerCase() !== query.trim().toLowerCase()).slice(0, 6);
+
+  function changeValue(next) {
+    setQuery(next);
+    queryRef.current = next;
+    onValueChange?.(next);
+    setOpen(true);
+  }
+
+  function commitValue(next) {
+    const clean = next.trim();
+    setQuery(clean);
+    queryRef.current = clean;
+    onValueChange?.(clean);
+    onCommit?.(clean);
+    setOpen(false);
+  }
+
+  return (
+    <div className={`location-autocomplete place-picker${compact ? " compact-place-picker" : ""}`}>
+      <input
+        aria-label={compact ? "Activity location" : "Location"}
+        placeholder="Search an exact place"
+        value={query}
+        autoComplete="off"
+        onFocus={(event) => { setOpen(true); if (compact) event.currentTarget.select(); }}
+        onChange={(event) => changeValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commitValue(queryRef.current);
+          }
+          if (event.key === "Escape") setOpen(false);
+        }}
+        onBlur={() => setTimeout(() => {
+          if (queryRef.current.trim() !== String(value || "").trim()) commitValue(queryRef.current);
+          else setOpen(false);
+        }, 180)}
+      />
+      {open && query.trim().length >= 2 && (
+        <div className="location-suggestions" role="listbox" aria-label="Location suggestions">
+          {loading && <div className="location-loading">Finding exact places…</div>}
+          {results.map((place) => (
+            <button type="button" key={place} onMouseDown={(event) => event.preventDefault()} onClick={() => commitValue(place)}>
+              {place}<small>Use this exact location · opens in Google Maps</small>
+            </button>
+          ))}
+          {!loading && results.length === 0 && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => commitValue(query)}>Use “{query.trim()}”<small>Save the location as typed</small></button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const CURRENCIES = {
   EUR: { symbol: "€", label: "Euro" },
   USD: { symbol: "$", label: "US dollar" },
@@ -462,7 +570,6 @@ export default function TripPage() {
 
   const myBalance = balances.find((b) => b.id === myTraveler()?.id);
   const money = (value, decimals = 0) => `${CURRENCIES[currency].symbol}${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: decimals })}`;
-  const locationSuggestions = suggestedLocations(newActivity.location, trip?.name);
   const updateFeed = useMemo(() => {
     const feed = [];
     activities.forEach((activity) => feed.push({
@@ -619,10 +726,10 @@ export default function TripPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="item-meta">
-                    <span><Icon name="pin" /><span contentEditable suppressContentEditableWarning onBlur={(e) => updateActivity(a.id, { location: e.target.textContent.trim() })}>{a.location || "Add exact location"}</span></span>
-                    <span><Icon name="coin" /><span contentEditable suppressContentEditableWarning onBlur={(e) => { const v = parseFloat(e.target.textContent.replace(/[^0-9.]/g, "")); updateActivity(a.id, { cost_pp: v > 0 ? v : 0 }); }}>{a.cost_pp ? `${money(a.cost_pp, 2)} pp` : "Add cost per person"}</span></span>
-                    <span><Icon name="clock" /><span contentEditable suppressContentEditableWarning onBlur={(e) => updateActivity(a.id, { time_text: e.target.textContent.trim() })}>{a.time_text || "Add time"}</span></span>
+                  <div className="item-meta activity-editors">
+                    <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={a.location || ""} tripName={trip.name} onCommit={(location) => updateActivity(a.id, { location: location || null })} /></div>
+                    <label className="inline-field inline-cost-field"><Icon name="coin" /><span className="currency-prefix">{CURRENCIES[currency].symbol}</span><input key={`cost-${a.id}-${a.cost_pp || 0}`} aria-label="Cost per person" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={a.cost_pp || ""} placeholder="0" onFocus={(event) => event.currentTarget.select()} onBlur={(event) => { const value = parseFloat(event.target.value); updateActivity(a.id, { cost_pp: value > 0 ? value : 0 }); }} /><small>pp</small></label>
+                    <label className="inline-field inline-time-field"><Icon name="clock" /><select aria-label="Activity time" value={a.time_text || ""} onChange={(event) => updateActivity(a.id, { time_text: event.target.value || null })}><option value="">Add time</option>{a.time_text && !TIME_OPTIONS.includes(a.time_text) && <option value={a.time_text}>{a.time_text}</option>}{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></label>
                     {a.cost_pp > 0 && (
                       <select className="paid-select" value={a.paid_by || ""} onChange={(e) => updateActivity(a.id, { paid_by: e.target.value || null })}>
                         <option value="">who paid?</option>
@@ -685,19 +792,14 @@ export default function TripPage() {
         <label className="field-label">Activity <b>required</b></label>
         <input className={activityError && !newActivity.name.trim() ? "input-error" : ""} placeholder="e.g. Sagrada Família tour" value={newActivity.name} onChange={(e) => { setNewActivity({ ...newActivity, name: e.target.value }); setActivityError(""); }} />
         <div className="composer-grid">
-          <div><label className="field-label">Day</label><input placeholder="Day 1" value={newActivity.day_label} onChange={(e) => setNewActivity({ ...newActivity, day_label: e.target.value })} /></div>
+          <div><label className="field-label">Day</label><input placeholder="Day 1" value={newActivity.day_label} onFocus={(event) => event.currentTarget.select()} onChange={(e) => setNewActivity({ ...newActivity, day_label: e.target.value })} /></div>
           <div><label className="field-label">Date</label><input type="date" value={newActivity.day_date} onChange={(e) => setNewActivity({ ...newActivity, day_date: e.target.value })} /></div>
           <div><label className="field-label">Time</label><select className="time-select" value={newActivity.time_text} onChange={(e) => setNewActivity({ ...newActivity, time_text: e.target.value })}><option value="">Select a time</option>{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></div>
-          <div><label className="field-label">Cost per person</label><input inputMode="decimal" placeholder={`${CURRENCIES[currency].symbol}0`} value={newActivity.cost_pp} onChange={(e) => setNewActivity({ ...newActivity, cost_pp: e.target.value })} /></div>
+          <div><label className="field-label">Cost per person</label><div className="composer-money-input"><span>{CURRENCIES[currency].symbol}</span><input aria-label="New activity cost per person" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0" value={newActivity.cost_pp} onFocus={(event) => event.currentTarget.select()} onChange={(e) => setNewActivity({ ...newActivity, cost_pp: e.target.value })} /></div></div>
         </div>
         <label className="field-label">Location <span>optional</span></label>
         <div className="location-field-row">
-          <div className="location-autocomplete">
-            <input placeholder="Start typing a place" value={newActivity.location} onFocus={() => setLocationOpen(true)} onChange={(e) => { setNewActivity({ ...newActivity, location: e.target.value }); setLocationOpen(true); }} autoComplete="off" />
-            {locationOpen && locationSuggestions.length > 0 && <div className="location-suggestions" role="listbox">
-              {locationSuggestions.map((place) => <button type="button" key={place} onClick={() => { setNewActivity({ ...newActivity, location: place }); setLocationOpen(false); }}>{place}<small>{place === newActivity.location.trim() ? "Use exact text" : "Suggested location"}</small></button>)}
-            </div>}
-          </div>
+          <PlacePicker value={newActivity.location} tripName={trip.name} onValueChange={(location) => setNewActivity((current) => ({ ...current, location }))} />
           <a className={`map-check ${newActivity.location.trim() ? "" : "disabled"}`} href={newActivity.location.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newActivity.location)}` : undefined} target="_blank" rel="noreferrer">Check Maps</a>
         </div>
         <label className="field-label">Booking link or confirmation <span>optional</span></label>
@@ -815,7 +917,7 @@ export default function TripPage() {
       </div>}
 
       {activeTab === "plan" && <button className="fab" title="Add activity" onClick={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>
-        <Icon name="plus" style={{ width: 22, height: 22 }} />
+        <Icon name="plus" style={{ width: 19, height: 19 }} /><span>Add activity</span>
       </button>}
       <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Trip navigation">
         <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => setActiveTab("plan")}><span>☷</span><small>Itinerary</small></button>
