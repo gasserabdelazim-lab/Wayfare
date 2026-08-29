@@ -177,6 +177,9 @@ export default function TripPage() {
   const [activityError, setActivityError] = useState("");
   const [activitySaving, setActivitySaving] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [actionNotice, setActionNotice] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [costForm, setCostForm] = useState({ desc: "", amt: "", paidBy: "" });
   const [addOpen, setAddOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
@@ -264,37 +267,63 @@ export default function TripPage() {
     return travelers.find((t) => t.name.toLowerCase() === (me || "").toLowerCase());
   }
 
+  function showNotice(text, type = "success") {
+    setActionNotice({ text, type });
+    window.setTimeout(() => setActionNotice(null), 3200);
+  }
+
   async function castVote(activityId, value) {
     const traveler = myTraveler();
     if (!traveler) return;
     const existing = (votesByActivity[activityId] || []).find((v) => v.traveler_id === traveler.id);
+    let result;
     if (existing && existing.value === value) {
-      await supabase.from("votes").delete().eq("id", existing.id);
+      result = await supabase.from("votes").delete().eq("id", existing.id);
     } else if (existing) {
-      await supabase.from("votes").update({ value }).eq("id", existing.id);
+      result = await supabase.from("votes").update({ value }).eq("id", existing.id);
     } else {
-      await supabase.from("votes").insert({ activity_id: activityId, traveler_id: traveler.id, value });
+      result = await supabase.from("votes").insert({ activity_id: activityId, traveler_id: traveler.id, value });
     }
+    if (result?.error) showNotice(`Vote wasn't saved: ${result.error.message}`, "error");
+    await load();
   }
 
   async function addComment(activityId, text) {
     const traveler = myTraveler();
     if (!traveler || !text.trim()) return;
-    await supabase.from("comments").insert({ activity_id: activityId, traveler_id: traveler.id, text: text.trim() });
+    const { error } = await supabase.from("comments").insert({ activity_id: activityId, traveler_id: traveler.id, text: text.trim() });
+    if (error) showNotice(`Comment wasn't saved: ${error.message}`, "error");
+    await load();
   }
 
   async function updateActivity(id, fields) {
-    await supabase.from("activities").update(fields).eq("id", id);
+    setActivities((current) => current.map((activity) => activity.id === id ? { ...activity, ...fields } : activity));
+    const { error } = await supabase.from("activities").update(fields).eq("id", id);
+    if (error) showNotice(`Change wasn't saved: ${error.message}`, "error");
+    await load();
   }
 
-  async function deleteActivity(id) {
-    if (!confirm("Remove this activity for everyone?")) return;
-    await supabase.from("activities").delete().eq("id", id);
+  async function deleteActivity() {
+    if (!deleteTarget || deleting) return;
+    const target = deleteTarget;
+    setDeleting(true);
+    const { error } = await supabase.from("activities").delete().eq("id", target.id);
+    setDeleting(false);
+    if (error) {
+      showNotice(`Couldn't delete ${target.name}: ${error.message}`, "error");
+      return;
+    }
+    setActivities((current) => current.filter((activity) => activity.id !== target.id));
+    setDeleteTarget(null);
+    showNotice(`${target.name} was deleted.`);
+    await load();
   }
 
   async function deleteExtraCost(id) {
     if (!confirm("Remove this cost?")) return;
-    await supabase.from("extra_costs").delete().eq("id", id);
+    const { error } = await supabase.from("extra_costs").delete().eq("id", id);
+    if (error) showNotice(`Couldn't remove that cost: ${error.message}`, "error");
+    await load();
   }
 
   async function addActivity(prefillName) {
@@ -328,18 +357,32 @@ export default function TripPage() {
       setActivityError(`Couldn't add this activity: ${error.message || "please try again."}`);
       return;
     }
+    if (data) {
+      setActivities((current) => [...current.filter((activity) => activity.id !== data.id), data]);
+      setJustAddedId(data.id);
+    }
     setNewActivity({ ...newActivity, name: "", location: "", time_text: "", cost_pp: "", booking_info: "" });
     setAddOpen(false);
-    if (data) setJustAddedId(data.id);
+    showNotice(`${activityName} was added to ${trip?.name || "the plan"}.`);
+    await load();
   }
 
   async function addExtraCost() {
     const val = parseFloat((costForm.amt || "").replace(/[^0-9.]/g, ""));
-    if (!costForm.desc.trim() || !(val > 0) || !costForm.paidBy) return;
-    await supabase.from("extra_costs").insert({
+    if (!costForm.desc.trim() || !(val > 0) || !costForm.paidBy) {
+      showNotice("Add a description, amount, and who paid.", "error");
+      return;
+    }
+    const { error } = await supabase.from("extra_costs").insert({
       trip_id: tripId, description: costForm.desc.trim(), amount: val, paid_by: costForm.paidBy
     });
+    if (error) {
+      showNotice(`Expense wasn't added: ${error.message}`, "error");
+      return;
+    }
     setCostForm({ desc: "", amt: "", paidBy: "" });
+    showNotice("Expense added.");
+    await load();
   }
 
   function statusOf(activityId) {
@@ -475,9 +518,9 @@ export default function TripPage() {
   return (
     <div className="trip-shell">
       <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${coverForTrip(trip.name)})` }}>
-        <div className="hero-nav"><a className="brand-mark" href="/">WAYFARE</a><button className="share-btn" onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied — send it to the group."); }}><Icon name="arrow" style={{ width: 14, height: 14 }} />Invite friends</button></div>
+        <div className="hero-nav"><a className="all-plans-back hero-back" href="/">← All plans</a><button className="share-btn" onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied — send it to the group."); }}><Icon name="arrow" style={{ width: 14, height: 14 }} />Invite friends</button></div>
         <div className="hero-content">
-          <div className="eyebrow hero-eyebrow">Group escape</div>
+          <div className="eyebrow hero-eyebrow">Trip plan</div>
           <h1>{trip.name}</h1>
           <div className="hero-meta">
             <span className="traveler-stack">{travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} size={28} />)}</span>
@@ -488,8 +531,8 @@ export default function TripPage() {
 
       <div className="wrap trip-wrap">
       <header className="trip-view-header">
-        <div className="eyebrow">{activeTab === "plan" ? "Group planning" : activeTab === "settle" ? "Shared expenses" : activeTab === "updates" ? "Latest activity" : "Profile & settings"}</div>
-        <h2>{activeTab === "plan" ? "Plans" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "You"}</h2>
+        <div className="eyebrow">{activeTab === "plan" ? `${trip.name} itinerary` : activeTab === "settle" ? `${trip.name} expenses` : activeTab === "updates" ? `${trip.name} activity` : "Profile & settings"}</div>
+        <h2>{activeTab === "plan" ? "Activities & ideas" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "You"}</h2>
       </header>
 
       {activeTab === "plan" && <div className="trip-summary">
@@ -571,7 +614,7 @@ export default function TripPage() {
                     </span>
                     <div className="item-top-right">
                       <span className={`item-badge b-${status}`}>{status[0].toUpperCase() + status.slice(1)}</span>
-                      <button className="icon-btn" title="Remove activity" onClick={() => deleteActivity(a.id)}>
+                      <button className="icon-btn delete-activity-btn" title="Remove activity" onClick={() => setDeleteTarget(a)}>
                         <Icon name="trash" style={{ width: 13, height: 13 }} />
                       </button>
                     </div>
@@ -761,11 +804,21 @@ export default function TripPage() {
 
       <div className="footnote">Wayfare — everyone with this link sees live updates. No accounts, just names.</div>
 
+      {actionNotice && <div className={`action-notice ${actionNotice.type === "error" ? "notice-error" : ""}`} role="status">{actionNotice.text}</div>}
+      {deleteTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deleting && setDeleteTarget(null)}>
+        <div className="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-title" onClick={(event) => event.stopPropagation()}>
+          <div className="confirm-icon">×</div>
+          <h3 id="delete-title">Delete “{deleteTarget.name}”?</h3>
+          <p>This removes the activity, its votes, and its comments from the {trip.name} plan.</p>
+          <div className="confirm-actions"><button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button><button className="danger-button" onClick={deleteActivity} disabled={deleting}>{deleting ? "Deleting…" : "Delete activity"}</button></div>
+        </div>
+      </div>}
+
       {activeTab === "plan" && <button className="fab" title="Add activity" onClick={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>
         <Icon name="plus" style={{ width: 22, height: 22 }} />
       </button>}
       <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Trip navigation">
-        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => setActiveTab("plan")}><span>☷</span><small>Plans</small></button>
+        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => setActiveTab("plan")}><span>☷</span><small>Itinerary</small></button>
         <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => setActiveTab("settle")}><span>⇄</span><small>Settle up</small></button>
         <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => setActiveTab("updates")}><span>✦</span><small>Updates</small></button>
         <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => setActiveTab("profile")}><span>○</span><small>Profile</small></button>
