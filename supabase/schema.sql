@@ -6,10 +6,14 @@ create extension if not exists "pgcrypto";
 create table trips (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  currency text not null default 'EUR' check (currency in ('EUR','USD','GBP','AED')),
   start_date date,
   end_date date,
   created_at timestamptz default now()
 );
+
+-- Safe migration for Wayfare projects created with the original schema.
+alter table trips add column if not exists currency text not null default 'EUR';
 
 create table travelers (
   id uuid primary key default gen_random_uuid(),
