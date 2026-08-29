@@ -346,3 +346,81 @@ button { font-family: inherit; }
   .trip-summary > div:nth-child(3) { border-right: 0; }
   .item-actions .book-action { margin-left: 0; }
 }
+
+/* ---------- Mobile app shell ---------- */
+.mobile-app-home { min-height: 100vh; background: #f8f7f3; padding-bottom: 104px; }
+.app-header { height: 76px; position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; max-width: 920px; margin: 0 auto; padding: 0 24px; background: rgba(248,247,243,.92); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(28,43,46,.08); }
+.app-header p { margin: 4px 0 0; font-size: 11px; opacity: .5; }
+.profile-bubble, .large-profile-bubble { display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--teal-deep); color: white; font-weight: 700; }
+.profile-bubble { width: 36px; height: 36px; }
+.large-profile-bubble { width: 70px; height: 70px; margin: 0 auto 24px; font: 500 28px 'Fraunces', serif; }
+.app-content { max-width: 920px; margin: 0 auto; padding: 36px 24px; }
+.app-welcome h1, .explore-view h1, .simple-app-view h1 { font-size: clamp(38px, 7vw, 62px); letter-spacing: -.035em; margin-top: 10px; }
+.app-welcome p, .explore-view > p { max-width: 540px; opacity: .62; line-height: 1.6; }
+.saved-trips { margin: 34px 0; }
+.section-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.section-title-row h2 { font-size: 21px; }
+.section-title-row span { background: #e5ebe7; color: var(--teal); border-radius: 10px; padding: 2px 7px; font-size: 11px; }
+.saved-trip-card { width: 100%; display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: center; border: 1px solid #e0ddd4; background: white; border-radius: 18px; padding: 10px; text-align: left; cursor: pointer; box-shadow: 0 8px 30px rgba(20,42,42,.05); }
+.trip-card-cover { height: 100px; border-radius: 12px; background-size: cover; background-position: center; }
+.saved-trip-card small, .saved-trip-card strong, .saved-trip-card span { display: block; }
+.saved-trip-card small { font: 10px 'IBM Plex Mono', monospace; opacity: .45; }
+.saved-trip-card strong { margin: 5px 0; font: 500 23px 'Fraunces', serif; }
+.saved-trip-card span { color: var(--teal); font-size: 12px; }
+.quick-create-card, .profile-card { max-width: 580px; background: white; border: 1px solid #dfdcd3; border-radius: 20px; padding: 24px; box-shadow: 0 14px 44px rgba(20,42,42,.06); }
+.quick-create-card input, .profile-card input { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #faf9f6; padding: 12px; font: 14px Inter, sans-serif; }
+.quick-create-card > button { width: 100%; margin-top: 16px; border: 0; border-radius: 10px; padding: 13px; background: var(--teal); color: white; cursor: pointer; }
+.explore-categories { display: flex; gap: 8px; overflow-x: auto; margin: 24px 0 18px; padding-bottom: 4px; }
+.explore-categories span { white-space: nowrap; border: 1px solid #d8d5cc; background: white; border-radius: 18px; padding: 8px 14px; font-size: 12px; }
+.explore-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.explore-card { min-height: 250px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; border: 0; border-radius: 18px; padding: 20px; background-size: cover; background-position: center; color: white; text-align: left; box-shadow: inset 0 -130px 100px rgba(0,0,0,.62); cursor: pointer; }
+.explore-card strong { font: 500 28px 'Fraunces', serif; }
+.explore-card small { margin: 5px 0 14px; opacity: .78; }
+.explore-card span { font-size: 12px; }
+.feed-row { width: 100%; display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; border: 0; border-bottom: 1px solid #e2dfd6; background: transparent; padding: 18px 4px; text-align: left; cursor: pointer; }
+.feed-row div strong, .feed-row div small { display: block; }
+.feed-row small { margin-top: 3px; opacity: .5; }
+.feed-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: #e1ece8; color: var(--teal); }
+.app-empty { margin-top: 36px; padding: 44px 24px; border: 1px dashed #cbc7ba; border-radius: 18px; text-align: center; }
+.profile-card { margin-top: 30px; text-align: center; }
+.profile-card .field-label { text-align: left; }
+.profile-card p { font-size: 12px; opacity: .5; line-height: 1.5; }
+.mobile-bottom-nav { position: fixed; z-index: 50; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(520px, calc(100% - 24px)); display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px; background: rgba(18,36,36,.96); border: 1px solid rgba(255,255,255,.12); border-radius: 22px; box-shadow: 0 18px 50px rgba(10,27,27,.28); backdrop-filter: blur(18px); }
+.bottom-nav-item { min-width: 0; border: 0; background: transparent; color: rgba(255,255,255,.58); text-decoration: none; padding: 7px 4px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+.bottom-nav-item span { font-size: 19px; line-height: 1; }
+.bottom-nav-item small { font-size: 10px; }
+.bottom-nav-item.active { color: white; background: rgba(255,255,255,.12); }
+.trip-bottom-nav { display: none; }
+
+/* ---------- Reliable activity composer ---------- */
+.activity-composer { border-radius: 18px; padding: 22px; }
+.composer-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; margin-bottom: 16px; }
+.composer-head h3 { margin-top: 5px; font-size: 22px; }
+.optional-note { max-width: 130px; text-align: right; font-size: 11px; opacity: .5; line-height: 1.4; }
+.activity-composer .field-label b { color: var(--coral); font-weight: 500; }
+.activity-composer .field-label span { text-transform: lowercase; opacity: .55; }
+.composer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 12px; }
+.location-field-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.map-check { display: flex; align-items: center; padding: 0 14px; border: 1px solid #b7d2cb; border-radius: 9px; color: var(--teal); text-decoration: none; font-size: 12px; white-space: nowrap; }
+.map-check.disabled { pointer-events: none; opacity: .38; }
+.input-error { border-color: var(--coral) !important; box-shadow: 0 0 0 3px rgba(208,96,63,.1); }
+.composer-error { margin-top: 12px; }
+.primary-add:disabled { opacity: .6; cursor: wait; }
+
+@media (max-width: 760px) {
+  .app-header { padding: 0 18px; }
+  .app-content { padding: 26px 16px; }
+  .app-welcome h1, .explore-view h1, .simple-app-view h1 { font-size: 42px; }
+  .saved-trip-card { grid-template-columns: 105px 1fr; }
+  .trip-card-cover { height: 86px; }
+  .explore-grid { grid-template-columns: 1fr; }
+  .explore-card { min-height: 210px; }
+  .trip-bottom-nav { display: grid; }
+  .trip-shell .wrap { padding-bottom: 128px; }
+  .trip-shell .fab { bottom: 94px; }
+  .composer-grid { grid-template-columns: 1fr 1fr; }
+  .location-field-row { grid-template-columns: 1fr; }
+  .map-check { justify-content: center; min-height: 40px; }
+  .composer-head { display: block; }
+  .optional-note { display: block; max-width: none; text-align: left; margin-top: 6px; }
+}
