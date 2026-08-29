@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 
 const icons = {
@@ -61,6 +61,33 @@ const SUGGESTIONS = [
   { name: "Free morning — sleep in", cat: "chill" },
   { name: "Day trip out of town", cat: "sight" },
 ];
+
+const TIME_OPTIONS = ["Flexible", ...Array.from({ length: 48 }, (_, index) => {
+  const hour = Math.floor(index / 2);
+  const minute = index % 2 ? "30" : "00";
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minute} ${suffix}`;
+})];
+
+const POPULAR_PLACES = {
+  barcelona: ["Sagrada Família", "Park Güell", "Gothic Quarter", "La Boqueria Market", "Barceloneta Beach", "Casa Batlló", "Montjuïc"],
+  paris: ["Eiffel Tower", "Louvre Museum", "Montmartre", "Musée d'Orsay", "Le Marais", "Arc de Triomphe"],
+  dubai: ["Burj Khalifa", "Dubai Mall", "Museum of the Future", "Dubai Marina", "Al Fahidi Historical Neighbourhood"],
+  tokyo: ["Shibuya Crossing", "Sensō-ji", "Meiji Jingu", "Tokyo Skytree", "Tsukiji Outer Market"],
+  london: ["Tower of London", "British Museum", "Covent Garden", "Borough Market", "Westminster Abbey"],
+  rome: ["Colosseum", "Trevi Fountain", "Pantheon", "Vatican Museums", "Piazza Navona"],
+};
+
+function suggestedLocations(query, tripName) {
+  const clean = query.trim();
+  if (!clean) return [];
+  const destination = String(tripName || "").toLowerCase();
+  const cityKey = Object.keys(POPULAR_PLACES).find((city) => destination.includes(city));
+  const matches = cityKey ? POPULAR_PLACES[cityKey].filter((place) => place.toLowerCase().includes(clean.toLowerCase())) : [];
+  const contextual = `${clean}, ${tripName}`;
+  return [...new Set([...matches, contextual, clean])].slice(0, 6);
+}
 
 const CURRENCIES = {
   EUR: { symbol: "€", label: "Euro" },
@@ -137,6 +164,7 @@ function downloadIcs(activity) {
 
 export default function TripPage() {
   const { id: tripId } = useParams();
+  const searchParams = useSearchParams();
   const [trip, setTrip] = useState(null);
   const [travelers, setTravelers] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -148,9 +176,13 @@ export default function TripPage() {
   const [newActivity, setNewActivity] = useState({ day_label: "Day 1", day_date: "", name: "", location: "", time_text: "", cost_pp: "", booking_info: "" });
   const [activityError, setActivityError] = useState("");
   const [activitySaving, setActivitySaving] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
   const [costForm, setCostForm] = useState({ desc: "", amt: "", paidBy: "" });
   const [addOpen, setAddOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("plan");
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = searchParams.get("view");
+    return ["plan", "settle", "updates", "profile"].includes(requested) ? requested : "plan";
+  });
   const [currency, setCurrency] = useState("EUR");
   const [justAddedId, setJustAddedId] = useState(null);
   const itemRefs = useRef({});
@@ -297,6 +329,7 @@ export default function TripPage() {
       return;
     }
     setNewActivity({ ...newActivity, name: "", location: "", time_text: "", cost_pp: "", booking_info: "" });
+    setAddOpen(false);
     if (data) setJustAddedId(data.id);
   }
 
@@ -386,6 +419,29 @@ export default function TripPage() {
 
   const myBalance = balances.find((b) => b.id === myTraveler()?.id);
   const money = (value, decimals = 0) => `${CURRENCIES[currency].symbol}${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: decimals })}`;
+  const locationSuggestions = suggestedLocations(newActivity.location, trip?.name);
+  const updateFeed = useMemo(() => {
+    const feed = [];
+    activities.forEach((activity) => feed.push({
+      id: `activity-${activity.id}`,
+      date: activity.created_at,
+      icon: "✦",
+      title: activity.name,
+      text: "New activity suggestion",
+    }));
+    Object.entries(votesByActivity).forEach(([activityId, votes]) => votes.forEach((vote) => {
+      const activity = activities.find((item) => item.id === activityId);
+      const traveler = travelers.find((item) => item.id === vote.traveler_id);
+      const label = vote.value === "up" ? "voted good" : vote.value === "meh" ? "voted maybe" : "voted skip";
+      feed.push({ id: `vote-${vote.id}`, date: vote.created_at, icon: "✓", title: activity?.name || "Activity", text: `${traveler?.name || "Someone"} ${label}` });
+    }));
+    Object.entries(commentsByActivity).forEach(([activityId, comments]) => comments.forEach((comment) => {
+      const activity = activities.find((item) => item.id === activityId);
+      feed.push({ id: `comment-${comment.id}`, date: comment.created_at, icon: "“", title: activity?.name || "Activity", text: `${comment.travelers?.name || "Someone"}: ${comment.text}` });
+    }));
+    extraCosts.forEach((cost) => feed.push({ id: `cost-${cost.id}`, date: cost.created_at, icon: "⇄", title: cost.description, text: `${cost.travelers?.name || "Someone"} added ${money(cost.amount)}` }));
+    return feed.sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 30);
+  }, [activities, votesByActivity, commentsByActivity, extraCosts, travelers, currency]);
 
   if (!trip) return <div className="wrap"><div className="loading-state">Loading your trip…</div></div>;
 
@@ -431,21 +487,17 @@ export default function TripPage() {
       </div>
 
       <div className="wrap trip-wrap">
-      <div className="trip-toolbar">
-        <div className="trip-tabs" role="tablist">
-          <button className={activeTab === "plan" ? "active" : ""} onClick={() => setActiveTab("plan")}>Plan <span>{activities.length}</span></button>
-          <button className={activeTab === "budget" ? "active" : ""} onClick={() => setActiveTab("budget")}>Budget <span>{money(total)}</span></button>
-          <button className={activeTab === "settle" ? "active" : ""} onClick={() => setActiveTab("settle")}>Settle up</button>
-        </div>
-        <label className="currency-picker"><span>Currency</span><select value={currency} onChange={(e) => { const next = e.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select></label>
-      </div>
+      <header className="trip-view-header">
+        <div className="eyebrow">{activeTab === "plan" ? "Group planning" : activeTab === "settle" ? "Shared expenses" : activeTab === "updates" ? "Latest activity" : "Profile & settings"}</div>
+        <h2>{activeTab === "plan" ? "Plans" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "You"}</h2>
+      </header>
 
-      <div className="trip-summary">
+      {activeTab === "plan" && <div className="trip-summary">
         <div><strong>{counts.agreed}</strong><span>Approved</span></div>
         <div><strong>{counts.contested}</strong><span>Needs a vote</span></div>
         <div><strong>{counts.waiting}</strong><span>New ideas</span></div>
         <div className="summary-budget"><strong>{money(share)}</strong><span>Estimated per person</span></div>
-      </div>
+      </div>}
 
       <section className={activeTab === "plan" ? "tab-panel" : "tab-panel is-hidden"}>
       <div className="pass legacy-pass">
@@ -475,7 +527,8 @@ export default function TripPage() {
         <div className="empty-state">
           <Icon name="sparkle" style={{ width: 22, height: 22, opacity: 0.5 }} />
           <div className="empty-title">No activities yet</div>
-          <div className="empty-sub">Add the first idea below, or try a quick suggestion.</div>
+          <div className="empty-sub">Create the first proposal, then invite friends to vote.</div>
+          <button className="empty-primary" onClick={() => setAddOpen(true)}>Create an activity</button>
           <div className="suggestion-row">
             {SUGGESTIONS.slice(0, 5).map((s) => (
               <button key={s.name} className="suggestion-chip" onClick={() => addActivity(s.name)}>
@@ -582,7 +635,8 @@ export default function TripPage() {
         </div>
       )}
 
-      <div className="sec-head"><h2>Add an activity</h2></div>
+      {addOpen && <>
+      <div className="sec-head"><h2>Create an activity</h2><button className="close-composer" onClick={() => setAddOpen(false)}>Close</button></div>
       <div className="home-card activity-composer" ref={addFormRef}>
         <div className="composer-head"><div><div className="eyebrow">New plan idea</div><h3>What should the group do?</h3></div><span className="optional-note">Location and price are optional</span></div>
         <label className="field-label">Activity <b>required</b></label>
@@ -590,19 +644,28 @@ export default function TripPage() {
         <div className="composer-grid">
           <div><label className="field-label">Day</label><input placeholder="Day 1" value={newActivity.day_label} onChange={(e) => setNewActivity({ ...newActivity, day_label: e.target.value })} /></div>
           <div><label className="field-label">Date</label><input type="date" value={newActivity.day_date} onChange={(e) => setNewActivity({ ...newActivity, day_date: e.target.value })} /></div>
-          <div><label className="field-label">Time</label><input placeholder="e.g. 10:30 AM" value={newActivity.time_text} onChange={(e) => setNewActivity({ ...newActivity, time_text: e.target.value })} /></div>
+          <div><label className="field-label">Time</label><select className="time-select" value={newActivity.time_text} onChange={(e) => setNewActivity({ ...newActivity, time_text: e.target.value })}><option value="">Select a time</option>{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></div>
           <div><label className="field-label">Cost per person</label><input inputMode="decimal" placeholder={`${CURRENCIES[currency].symbol}0`} value={newActivity.cost_pp} onChange={(e) => setNewActivity({ ...newActivity, cost_pp: e.target.value })} /></div>
         </div>
         <label className="field-label">Location <span>optional</span></label>
-        <div className="location-field-row"><input placeholder="Search or paste an exact place" value={newActivity.location} onChange={(e) => setNewActivity({ ...newActivity, location: e.target.value })} /><a className={`map-check ${newActivity.location.trim() ? "" : "disabled"}`} href={newActivity.location.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newActivity.location)}` : undefined} target="_blank" rel="noreferrer">Check Maps</a></div>
+        <div className="location-field-row">
+          <div className="location-autocomplete">
+            <input placeholder="Start typing a place" value={newActivity.location} onFocus={() => setLocationOpen(true)} onChange={(e) => { setNewActivity({ ...newActivity, location: e.target.value }); setLocationOpen(true); }} autoComplete="off" />
+            {locationOpen && locationSuggestions.length > 0 && <div className="location-suggestions" role="listbox">
+              {locationSuggestions.map((place) => <button type="button" key={place} onClick={() => { setNewActivity({ ...newActivity, location: place }); setLocationOpen(false); }}>{place}<small>{place === newActivity.location.trim() ? "Use exact text" : "Suggested location"}</small></button>)}
+            </div>}
+          </div>
+          <a className={`map-check ${newActivity.location.trim() ? "" : "disabled"}`} href={newActivity.location.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newActivity.location)}` : undefined} target="_blank" rel="noreferrer">Check Maps</a>
+        </div>
         <label className="field-label">Booking link or confirmation <span>optional</span></label>
         <input placeholder="Paste a Klook, museum, tour, or ticket link" value={newActivity.booking_info} onChange={(e) => setNewActivity({ ...newActivity, booking_info: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addActivity()} />
         {activityError && <p className="form-error composer-error">{activityError}</p>}
         <button className="primary-add" onClick={() => addActivity()} disabled={activitySaving}><Icon name="plus" style={{ width: 13, height: 13, marginRight: 6 }} />{activitySaving ? "Adding…" : "Add to the plan"}</button>
       </div>
+      </>}
       </section>
 
-      <section className={activeTab === "budget" ? "tab-panel" : "tab-panel is-hidden"}>
+      <section className={activeTab === "settle" ? "tab-panel" : "tab-panel is-hidden"}>
       <div className="sec-head"><h2>Costs so far</h2></div>
       <div className="cost-card">
         <div className="cost-total">
@@ -679,16 +742,33 @@ export default function TripPage() {
       </div>
       </section>
 
+      <section className={activeTab === "updates" ? "tab-panel" : "tab-panel is-hidden"}>
+        <div className="updates-card">
+          {updateFeed.length ? updateFeed.map((entry) => <div className="update-row" key={entry.id}><span className="feed-icon">{entry.icon}</span><div><strong>{entry.title}</strong><p>{entry.text}</p><small>{entry.date ? new Date(entry.date).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Just now"}</small></div></div>) : <div className="app-empty"><span>✦</span><h3>No updates yet</h3><p>New activities, votes, comments, and expenses will appear here.</p></div>}
+        </div>
+      </section>
+
+      <section className={activeTab === "profile" ? "tab-panel" : "tab-panel is-hidden"}>
+        <div className="profile-card trip-profile-card">
+          <div className="large-profile-bubble">{(me || "Y").slice(0, 1).toUpperCase()}</div>
+          <h3>{me}</h3><p>You are viewing the {trip.name} group plan.</p>
+          <label className="field-label">Trip currency</label>
+          <select className="settings-select" value={currency} onChange={(e) => { const next = e.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
+          <div className="profile-members"><div className="field-label">Travelers</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} size={24} />{traveler.name}</span>)}</div>
+          <a className="all-plans-link" href="/">Back to all plans</a>
+        </div>
+      </section>
+
       <div className="footnote">Wayfare — everyone with this link sees live updates. No accounts, just names.</div>
 
-      <button className="fab" title="Add activity" onClick={() => { setAddOpen(true); setActiveTab("plan"); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>
+      {activeTab === "plan" && <button className="fab" title="Add activity" onClick={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>
         <Icon name="plus" style={{ width: 22, height: 22 }} />
-      </button>
-      <nav className="mobile-bottom-nav trip-bottom-nav">
-        <a href="/" className="bottom-nav-item"><span>⌂</span><small>Trips</small></a>
-        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => setActiveTab("plan")}><span>☷</span><small>Plan</small></button>
-        <button className={`bottom-nav-item ${activeTab === "budget" ? "active" : ""}`} onClick={() => setActiveTab("budget")}><span>◉</span><small>Expenses</small></button>
-        <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => setActiveTab("settle")}><span>⇄</span><small>Settle</small></button>
+      </button>}
+      <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Trip navigation">
+        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => setActiveTab("plan")}><span>☷</span><small>Plans</small></button>
+        <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => setActiveTab("settle")}><span>⇄</span><small>Settle up</small></button>
+        <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => setActiveTab("updates")}><span>✦</span><small>Updates</small></button>
+        <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => setActiveTab("profile")}><span>○</span><small>Profile</small></button>
       </nav>
       </div>
     </div>
