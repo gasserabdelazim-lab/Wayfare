@@ -508,3 +508,78 @@ body { background: #e9ece8; }
 .confirm-actions .danger-button { border-color: var(--coral); background: var(--coral); color: white; }
 .confirm-actions button:disabled { opacity: .58; cursor: wait; }
 @keyframes sheet-up { from { opacity: 0; transform: translateY(20px); } }
+
+/* Real form controls for editing an activity */
+.activity-editors {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 152px;
+  gap: 8px;
+  margin-top: 12px;
+  opacity: 1;
+  overflow: visible;
+}
+.inline-field {
+  min-width: 0;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid #ddd8cc;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: 12px 'Inter', sans-serif;
+}
+.activity-editors .inline-field > span:first-child { color: var(--teal); }
+.activity-editors .inline-field svg { width: 14px; height: 14px; }
+.inline-field input,
+.inline-field select {
+  min-width: 0;
+  width: 100%;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 12px 'Inter', sans-serif;
+}
+.inline-field:focus-within { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(31,111,99,.1); }
+.inline-location-field { padding-right: 4px; overflow: visible; }
+.inline-location-field .place-picker { flex: 1; min-width: 0; }
+.inline-location-field .place-picker input { text-overflow: ellipsis; }
+.inline-cost-field { gap: 4px; }
+.inline-cost-field input { text-align: right; }
+.inline-cost-field small { opacity: .55; font-size: 10px; white-space: nowrap; }
+.currency-prefix { color: var(--ink); opacity: .62; white-space: nowrap; }
+.inline-time-field select { cursor: pointer; }
+.location-loading { padding: 11px 13px; color: var(--teal); font-size: 12px; background: #f4faf8; }
+.composer-money-input {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding-left: 12px;
+  border: 1px solid #d7d3c8;
+  border-radius: 9px;
+  background: #fff;
+}
+.composer-money-input:focus-within { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(31,111,99,.1); }
+.composer-money-input > span { color: var(--teal); font: 600 12px 'IBM Plex Mono', monospace; }
+.activity-composer .composer-money-input input { margin: 0; border: 0; box-shadow: none; background: transparent; }
+.trip-shell .fab {
+  width: auto;
+  height: 50px;
+  padding: 0 18px;
+  gap: 8px;
+  border-radius: 999px;
+  font-weight: 750;
+  letter-spacing: -.01em;
+}
+.trip-shell .fab > span:last-child { white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .activity-editors { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .inline-location-field { grid-column: 1 / -1; }
+  .location-suggestions { position: fixed; top: auto; left: 14px; right: 14px; bottom: 156px; max-height: min(48vh, 360px); overflow-y: auto; z-index: 80; }
+}
