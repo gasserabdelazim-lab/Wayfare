@@ -145,7 +145,9 @@ export default function TripPage() {
   const [extraCosts, setExtraCosts] = useState([]);
   const [me, setMe] = useState(null);
   const [nameInput, setNameInput] = useState("");
-  const [newActivity, setNewActivity] = useState({ day_label: "", day_date: "", name: "" });
+  const [newActivity, setNewActivity] = useState({ day_label: "Day 1", day_date: "", name: "", location: "", time_text: "", cost_pp: "", booking_info: "" });
+  const [activityError, setActivityError] = useState("");
+  const [activitySaving, setActivitySaving] = useState(false);
   const [costForm, setCostForm] = useState({ desc: "", amt: "", paidBy: "" });
   const [addOpen, setAddOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("plan");
@@ -266,19 +268,35 @@ export default function TripPage() {
   async function addActivity(prefillName) {
     const label = newActivity.day_label.trim() || "Unscheduled";
     const activityName = (prefillName ?? newActivity.name).trim();
-    if (!activityName) return;
-    const { data } = await supabase
+    if (!activityName) {
+      setActivityError("Add an activity name first — for example, Sagrada Família tour.");
+      addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setActivitySaving(true);
+    setActivityError("");
+    const parsedCost = parseFloat(String(newActivity.cost_pp || "").replace(/[^0-9.]/g, ""));
+    const { data, error } = await supabase
       .from("activities")
       .insert({
         trip_id: tripId,
         day_label: label,
         day_date: newActivity.day_date || null,
         name: activityName,
+        location: newActivity.location.trim() || null,
+        time_text: newActivity.time_text.trim() || null,
+        cost_pp: parsedCost > 0 ? parsedCost : 0,
+        booking_info: newActivity.booking_info.trim() || null,
         sort_order: activities.length,
       })
       .select()
       .single();
-    setNewActivity({ day_label: newActivity.day_label, day_date: newActivity.day_date, name: "" });
+    setActivitySaving(false);
+    if (error) {
+      setActivityError(`Couldn't add this activity: ${error.message || "please try again."}`);
+      return;
+    }
+    setNewActivity({ ...newActivity, name: "", location: "", time_text: "", cost_pp: "", booking_info: "" });
     if (data) setJustAddedId(data.id);
   }
 
@@ -565,14 +583,22 @@ export default function TripPage() {
       )}
 
       <div className="sec-head"><h2>Add an activity</h2></div>
-      <div className="home-card" ref={addFormRef}>
-        <label className="field-label">Day</label>
-        <input placeholder="e.g. Day 3 · Barcelona" value={newActivity.day_label} onChange={(e) => setNewActivity({ ...newActivity, day_label: e.target.value })} />
-        <label className="field-label">Date (optional, keeps days in order)</label>
-        <input type="date" value={newActivity.day_date} onChange={(e) => setNewActivity({ ...newActivity, day_date: e.target.value })} />
-        <label className="field-label">Activity</label>
-        <input placeholder="e.g. Sagrada Família tour" value={newActivity.name} onChange={(e) => setNewActivity({ ...newActivity, name: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addActivity()} />
-        <button onClick={() => addActivity()}><Icon name="plus" style={{ width: 13, height: 13, marginRight: 6 }} />Add activity</button>
+      <div className="home-card activity-composer" ref={addFormRef}>
+        <div className="composer-head"><div><div className="eyebrow">New plan idea</div><h3>What should the group do?</h3></div><span className="optional-note">Location and price are optional</span></div>
+        <label className="field-label">Activity <b>required</b></label>
+        <input className={activityError && !newActivity.name.trim() ? "input-error" : ""} placeholder="e.g. Sagrada Família tour" value={newActivity.name} onChange={(e) => { setNewActivity({ ...newActivity, name: e.target.value }); setActivityError(""); }} />
+        <div className="composer-grid">
+          <div><label className="field-label">Day</label><input placeholder="Day 1" value={newActivity.day_label} onChange={(e) => setNewActivity({ ...newActivity, day_label: e.target.value })} /></div>
+          <div><label className="field-label">Date</label><input type="date" value={newActivity.day_date} onChange={(e) => setNewActivity({ ...newActivity, day_date: e.target.value })} /></div>
+          <div><label className="field-label">Time</label><input placeholder="e.g. 10:30 AM" value={newActivity.time_text} onChange={(e) => setNewActivity({ ...newActivity, time_text: e.target.value })} /></div>
+          <div><label className="field-label">Cost per person</label><input inputMode="decimal" placeholder={`${CURRENCIES[currency].symbol}0`} value={newActivity.cost_pp} onChange={(e) => setNewActivity({ ...newActivity, cost_pp: e.target.value })} /></div>
+        </div>
+        <label className="field-label">Location <span>optional</span></label>
+        <div className="location-field-row"><input placeholder="Search or paste an exact place" value={newActivity.location} onChange={(e) => setNewActivity({ ...newActivity, location: e.target.value })} /><a className={`map-check ${newActivity.location.trim() ? "" : "disabled"}`} href={newActivity.location.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newActivity.location)}` : undefined} target="_blank" rel="noreferrer">Check Maps</a></div>
+        <label className="field-label">Booking link or confirmation <span>optional</span></label>
+        <input placeholder="Paste a Klook, museum, tour, or ticket link" value={newActivity.booking_info} onChange={(e) => setNewActivity({ ...newActivity, booking_info: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addActivity()} />
+        {activityError && <p className="form-error composer-error">{activityError}</p>}
+        <button className="primary-add" onClick={() => addActivity()} disabled={activitySaving}><Icon name="plus" style={{ width: 13, height: 13, marginRight: 6 }} />{activitySaving ? "Adding…" : "Add to the plan"}</button>
       </div>
       </section>
 
@@ -658,6 +684,12 @@ export default function TripPage() {
       <button className="fab" title="Add activity" onClick={() => { setAddOpen(true); setActiveTab("plan"); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>
         <Icon name="plus" style={{ width: 22, height: 22 }} />
       </button>
+      <nav className="mobile-bottom-nav trip-bottom-nav">
+        <a href="/" className="bottom-nav-item"><span>⌂</span><small>Trips</small></a>
+        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => setActiveTab("plan")}><span>☷</span><small>Plan</small></button>
+        <button className={`bottom-nav-item ${activeTab === "budget" ? "active" : ""}`} onClick={() => setActiveTab("budget")}><span>◉</span><small>Expenses</small></button>
+        <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => setActiveTab("settle")}><span>⇄</span><small>Settle</small></button>
+      </nav>
       </div>
     </div>
   );
