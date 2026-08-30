@@ -204,6 +204,16 @@ const CURRENCIES = {
   AED: { symbol: "AED ", label: "UAE dirham" },
 };
 
+const EXPENSE_GROUP_PREFIX = "WAYFARE_GROUP::";
+
+function isExpenseGroupName(name) {
+  return String(name || "").startsWith(EXPENSE_GROUP_PREFIX);
+}
+
+function displayGroupName(name) {
+  return String(name || "").replace(EXPENSE_GROUP_PREFIX, "");
+}
+
 const DESTINATION_COVERS = [
   { match: /barcelona/i, url: "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=1600&q=85" },
   { match: /paris/i, url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=85" },
@@ -298,6 +308,10 @@ export default function TripPage() {
   const [justAddedId, setJustAddedId] = useState(null);
   const itemRefs = useRef({});
   const addFormRef = useRef(null);
+
+  useEffect(() => {
+    if (isExpenseGroupName(trip?.name) && activeTab === "plan") setActiveTab("settle");
+  }, [trip?.name, activeTab]);
 
   const load = useCallback(async () => {
     const { data: tripData } = await supabase.from("trips").select("*").eq("id", tripId).single();
@@ -471,7 +485,7 @@ export default function TripPage() {
     }
     setNewActivity({ ...newActivity, name: "", location: "", time_text: "", cost_pp: "", booking_info: "" });
     setAddOpen(false);
-    showNotice(`${activityName} was added to ${trip?.name || "the plan"}.`);
+    showNotice(`${activityName} was added to ${tripDisplayName || "the plan"}.`);
     await load();
   }
 
@@ -568,6 +582,8 @@ export default function TripPage() {
     }
   }
 
+  const expenseOnly = isExpenseGroupName(trip?.name);
+  const tripDisplayName = displayGroupName(trip?.name);
   const myBalance = balances.find((b) => b.id === myTraveler()?.id);
   const money = (value, decimals = 0) => `${CURRENCIES[currency].symbol}${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: decimals })}`;
   const updateFeed = useMemo(() => {
@@ -598,11 +614,11 @@ export default function TripPage() {
   if (!me) {
     return (
       <div className="wrap name-gate">
-        <div className="eyebrow">{trip.name}</div>
+        <div className="eyebrow">{tripDisplayName}</div>
         <h1 style={{ fontSize: 26, marginTop: 10 }}>What's your name?</h1>
         <p style={{ opacity: 0.6, fontSize: 13, marginTop: 6 }}>So the group knows whose votes are whose.</p>
         <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Your name" onKeyDown={(e) => e.key === "Enter" && joinAsTraveler()} autoFocus />
-        <button onClick={() => joinAsTraveler()}>Join trip</button>
+        <button onClick={() => joinAsTraveler()}>{expenseOnly ? "Join expense group" : "Join trip"}</button>
         {travelers.length > 0 && (
           <div className="existing-travelers">
             <div className="field-label" style={{ textAlign: "center" }}>Already on this trip</div>
@@ -624,21 +640,21 @@ export default function TripPage() {
 
   return (
     <div className="trip-shell">
-      <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${coverForTrip(trip.name)})` }}>
-        <div className="hero-nav"><a className="all-plans-back hero-back" href="/">← All plans</a><button className="share-btn" onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied — send it to the group."); }}><Icon name="arrow" style={{ width: 14, height: 14 }} />Invite friends</button></div>
+      <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${coverForTrip(tripDisplayName)})` }}>
+        <div className="hero-nav"><a className="all-plans-back hero-back" href={expenseOnly ? "/?view=settle" : "/"}>← {expenseOnly ? "All groups" : "All plans"}</a><button className="share-btn" onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied — send it to the group."); }}><Icon name="arrow" style={{ width: 14, height: 14 }} />Invite friends</button></div>
         <div className="hero-content">
-          <div className="eyebrow hero-eyebrow">Trip plan</div>
-          <h1>{trip.name}</h1>
+          <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>
+          <h1>{tripDisplayName}</h1>
           <div className="hero-meta">
             <span className="traveler-stack">{travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} size={28} />)}</span>
-            <span>{travelers.length} traveler{travelers.length === 1 ? "" : "s"}</span><span>•</span><span>{activities.length} ideas</span><span>•</span><span>{money(share)} each so far</span>
+            <span>{travelers.length} {expenseOnly ? `member${travelers.length === 1 ? "" : "s"}` : `traveler${travelers.length === 1 ? "" : "s"}`}</span><span>•</span><span>{expenseOnly ? `${extraCosts.length} expense${extraCosts.length === 1 ? "" : "s"}` : `${activities.length} ideas`}</span><span>•</span><span>{expenseOnly ? `${money(total)} shared` : `${money(share)} each so far`}</span>
           </div>
         </div>
       </div>
 
       <div className="wrap trip-wrap">
       <header className="trip-view-header">
-        <div className="eyebrow">{activeTab === "plan" ? `${trip.name} itinerary` : activeTab === "settle" ? `${trip.name} expenses` : activeTab === "updates" ? `${trip.name} activity` : "Profile & settings"}</div>
+        <div className="eyebrow">{activeTab === "plan" ? `${tripDisplayName} itinerary` : activeTab === "settle" ? `${tripDisplayName} expenses` : activeTab === "updates" ? `${tripDisplayName} activity` : "Profile & settings"}</div>
         <h2>{activeTab === "plan" ? "Activities & ideas" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "You"}</h2>
       </header>
 
@@ -654,7 +670,7 @@ export default function TripPage() {
         <div className="pass-top">
           <div>
             <div className="eyebrow">Boarding · Group trip</div>
-            <h1>{trip.name}</h1>
+            <h1>{tripDisplayName}</h1>
             <div className="pass-dates">
               <span className="traveler-stack">
                 {travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} size={22} />)}
@@ -729,7 +745,7 @@ export default function TripPage() {
                     </div>
                   </div>
                   <div className="item-meta activity-editors">
-                    <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={editableLocation} tripName={trip.name} onCommit={(location) => updateActivity(a.id, { location: location || null })} /></div>
+                    <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={editableLocation} tripName={tripDisplayName} onCommit={(location) => updateActivity(a.id, { location: location || null })} /></div>
                     <label className="inline-field inline-cost-field"><Icon name="coin" /><span className="currency-prefix">{CURRENCIES[currency].symbol}</span><input key={`cost-${a.id}-${a.cost_pp || 0}`} aria-label="Cost per person" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={a.cost_pp || ""} placeholder="0" onFocus={(event) => event.currentTarget.select()} onBlur={(event) => { const value = parseFloat(event.target.value); updateActivity(a.id, { cost_pp: value > 0 ? value : 0 }); }} /><small>pp</small></label>
                     <label className="inline-field inline-time-field"><Icon name="clock" /><select aria-label="Activity time" value={editableTime} onChange={(event) => updateActivity(a.id, { time_text: event.target.value || null })}><option value="">Add time</option>{editableTime && !TIME_OPTIONS.includes(editableTime) && <option value={editableTime}>{editableTime}</option>}{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></label>
                     {a.cost_pp > 0 && (
@@ -762,7 +778,7 @@ export default function TripPage() {
                   <div className="item-actions">
                     <a className="cal-btn map-action" href={mapsUrl(a)} target="_blank" rel="noreferrer"><Icon name="pin" />Open in Maps</a>
                     <button className="cal-btn" onClick={() => downloadIcs(a)}><Icon name="cal" />Add to calendar</button>
-                    <a className="cal-btn book-action" href={bookingUrl(a, trip.name)} target="_blank" rel="noreferrer">Find tickets <Icon name="arrow" /></a>
+                    <a className="cal-btn book-action" href={bookingUrl(a, tripDisplayName)} target="_blank" rel="noreferrer">Find tickets <Icon name="arrow" /></a>
                   </div>
                   <div className="booking">
                     <input placeholder="Save booking link or confirmation number" defaultValue={a.booking_info || ""} onBlur={(e) => updateActivity(a.id, { booking_info: e.target.value })} />
@@ -801,7 +817,7 @@ export default function TripPage() {
         </div>
         <label className="field-label">Location <span>optional</span></label>
         <div className="location-field-row">
-          <PlacePicker value={newActivity.location} tripName={trip.name} onValueChange={(location) => setNewActivity((current) => ({ ...current, location }))} />
+          <PlacePicker value={newActivity.location} tripName={tripDisplayName} onValueChange={(location) => setNewActivity((current) => ({ ...current, location }))} />
           <a className={`map-check ${newActivity.location.trim() ? "" : "disabled"}`} href={newActivity.location.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newActivity.location)}` : undefined} target="_blank" rel="noreferrer">Check Maps</a>
         </div>
         <label className="field-label">Booking link or confirmation <span>optional</span></label>
@@ -813,13 +829,14 @@ export default function TripPage() {
       </section>
 
       <section className={activeTab === "settle" ? "tab-panel" : "tab-panel is-hidden"}>
+      {expenseOnly && <div className="expense-only-banner"><span>⌂</span><div><strong>Everyday expense group</strong><p>No itinerary needed. Add supermarket runs, rent, dinners, or anything the group shares.</p></div></div>}
       <div className="sec-head"><h2>Costs so far</h2></div>
       <div className="cost-card">
         <div className="cost-total">
           <div><div className="num">{money(total)}</div><div className="lab">total, all items + extras</div></div>
           <div style={{ textAlign: "right" }}><div className="num">{money(share)}</div><div className="lab">per traveler</div></div>
         </div>
-        <div className="cost-sub">{money(itemsTotal)} from activities · {money(extrasTotal)} in extras</div>
+        <div className="cost-sub">{expenseOnly ? `${money(extrasTotal)} in shared expenses` : `${money(itemsTotal)} from activities · ${money(extrasTotal)} in extras`}</div>
         {activities.filter((a) => a.cost_pp > 0).map((a) => {
           const payer = travelers.find((t) => t.id === a.paid_by);
           return (
@@ -843,11 +860,12 @@ export default function TripPage() {
           </div>
         ))}
         {activities.filter((a) => a.cost_pp > 0).length === 0 && extraCosts.length === 0 && (
-          <div className="ledger-empty">No costs logged yet — add one below, or set a cost on an activity above.</div>
+          <div className="ledger-empty">{expenseOnly ? "No expenses yet — add the first shared purchase below." : "No costs logged yet — add one below, or set a cost on an activity above."}</div>
         )}
         <div className="add-cost">
-          <input placeholder="What was it for?" value={costForm.desc} onChange={(e) => setCostForm({ ...costForm, desc: e.target.value })} />
-          <input placeholder={`${CURRENCIES[currency].symbol} amount`} value={costForm.amt} onChange={(e) => setCostForm({ ...costForm, amt: e.target.value })} />
+          <div className="add-cost-title"><strong>Add an expense</strong><small>Everyone gets an equal share</small></div>
+          <input aria-label="Expense description" placeholder="e.g. Supermarket" value={costForm.desc} onChange={(e) => setCostForm({ ...costForm, desc: e.target.value })} />
+          <div className="expense-amount-input"><span>{CURRENCIES[currency].symbol}</span><input aria-label="Expense amount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0" value={costForm.amt} onFocus={(event) => event.currentTarget.select()} onChange={(e) => setCostForm({ ...costForm, amt: e.target.value })} /></div>
           <select className="paid-select" style={{ borderRadius: 8, padding: "0 8px" }} value={costForm.paidBy} onChange={(e) => setCostForm({ ...costForm, paidBy: e.target.value })}>
             <option value="">who paid?</option>
             {travelers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -898,11 +916,11 @@ export default function TripPage() {
       <section className={activeTab === "profile" ? "tab-panel" : "tab-panel is-hidden"}>
         <div className="profile-card trip-profile-card">
           <div className="large-profile-bubble">{(me || "Y").slice(0, 1).toUpperCase()}</div>
-          <h3>{me}</h3><p>You are viewing the {trip.name} group plan.</p>
-          <label className="field-label">Trip currency</label>
+          <h3>{me}</h3><p>You are viewing the {tripDisplayName} {expenseOnly ? "expense group" : "group plan"}.</p>
+          <label className="field-label">{expenseOnly ? "Group" : "Trip"} currency</label>
           <select className="settings-select" value={currency} onChange={(e) => { const next = e.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
-          <div className="profile-members"><div className="field-label">Travelers</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} size={24} />{traveler.name}</span>)}</div>
-          <a className="all-plans-link" href="/">Back to all plans</a>
+          <div className="profile-members"><div className="field-label">{expenseOnly ? "Members" : "Travelers"}</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} size={24} />{traveler.name}</span>)}</div>
+          <a className="all-plans-link" href={expenseOnly ? "/?view=settle" : "/"}>Back to {expenseOnly ? "Settle up" : "all plans"}</a>
         </div>
       </section>
 
@@ -913,16 +931,16 @@ export default function TripPage() {
         <div className="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-title" onClick={(event) => event.stopPropagation()}>
           <div className="confirm-icon">×</div>
           <h3 id="delete-title">Delete “{deleteTarget.name}”?</h3>
-          <p>This removes the activity, its votes, and its comments from the {trip.name} plan.</p>
+          <p>This removes the activity, its votes, and its comments from the {tripDisplayName} plan.</p>
           <div className="confirm-actions"><button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button><button className="danger-button" onClick={deleteActivity} disabled={deleting}>{deleting ? "Deleting…" : "Delete activity"}</button></div>
         </div>
       </div>}
 
-      {activeTab === "plan" && <button className="fab" title="Add activity" onClick={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>
+      {activeTab === "plan" && !expenseOnly && <button className="fab" title="Add activity" onClick={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>
         <Icon name="plus" style={{ width: 19, height: 19 }} /><span>Add activity</span>
       </button>}
-      <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Trip navigation">
-        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => setActiveTab("plan")}><span>☷</span><small>Itinerary</small></button>
+      <nav className={`mobile-bottom-nav trip-bottom-nav ${expenseOnly ? "expense-group-nav" : ""}`} aria-label="Trip navigation">
+        {!expenseOnly && <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => setActiveTab("plan")}><span>☷</span><small>Itinerary</small></button>}
         <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => setActiveTab("settle")}><span>⇄</span><small>Settle up</small></button>
         <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => setActiveTab("updates")}><span>✦</span><small>Updates</small></button>
         <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => setActiveTab("profile")}><span>○</span><small>Profile</small></button>
