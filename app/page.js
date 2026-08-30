@@ -66,7 +66,7 @@ function DestinationCover({ name }) {
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Image search failed")))
       .then((payload) => {
         const found = (payload.query?.pages || []).sort((a, b) => (a.index || 0) - (b.index || 0)).map((page) => page.thumbnail?.source).filter(Boolean);
-        if (found.length) setPhotos([...new Set(found)].slice(0, 3));
+        if (found.length) setPhotos([...new Set([tripCover(name), ...found])].slice(0, 3));
       })
       .catch(() => {});
     return () => controller.abort();
@@ -76,9 +76,9 @@ function DestinationCover({ name }) {
 }
 
 function tripCover(name = "") {
-  return name.toLowerCase().includes("barcelona")
-    ? "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=700&q=78"
-    : "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=78";
+  if (/cairo|giza/i.test(name)) return "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/The_Giza_Pyramids.jpg/1280px-The_Giza_Pyramids.jpg";
+  if (/barcelona/i.test(name)) return "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=700&q=78";
+  return "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=78";
 }
 
 export default function Home() {
