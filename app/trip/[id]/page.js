@@ -243,6 +243,7 @@ function displayGroupName(name) {
 }
 
 const DESTINATION_COVERS = [
+  { match: /cairo|giza/i, url: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/The_Giza_Pyramids.jpg/1280px-The_Giza_Pyramids.jpg" },
   { match: /barcelona/i, url: "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=1600&q=85" },
   { match: /paris/i, url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=85" },
   { match: /london/i, url: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1600&q=85" },
@@ -271,7 +272,7 @@ function useDestinationPhotos(name) {
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Image search failed")))
       .then((payload) => {
         const found = (payload.query?.pages || []).sort((a, b) => (a.index || 0) - (b.index || 0)).map((page) => page.thumbnail?.source).filter(Boolean);
-        if (found.length) setPhotos([...new Set(found)].slice(0, 6));
+        if (found.length) setPhotos([...new Set([coverForTrip(name), ...found])].slice(0, 6));
       })
       .catch(() => {});
     return () => controller.abort();
