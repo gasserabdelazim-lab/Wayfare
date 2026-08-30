@@ -583,3 +583,64 @@ body { background: #e9ece8; }
   .inline-location-field { grid-column: 1 / -1; }
   .location-suggestions { position: fixed; top: auto; left: 14px; right: 14px; bottom: 156px; max-height: min(48vh, 360px); overflow-y: auto; z-index: 80; }
 }
+
+/* Standalone Splitwise-style expense groups */
+.settle-choice-card {
+  margin: 24px 0 28px;
+  overflow: hidden;
+  border: 1px solid #d7ded9;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #f4faf7, #fff 62%);
+  box-shadow: 0 14px 42px rgba(20, 58, 53, .07);
+}
+.settle-new-group {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.settle-new-group > span:nth-child(2) strong,
+.settle-new-group > span:nth-child(2) small { display: block; }
+.settle-new-group > span:nth-child(2) strong { font-size: 16px; }
+.settle-new-group > span:nth-child(2) small { margin-top: 4px; opacity: .56; line-height: 1.4; }
+.settle-choice-icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: var(--teal); color: #fff; font-size: 24px; }
+.expense-group-form { padding: 0 18px 20px; border-top: 1px solid #e4ebe7; }
+.expense-group-form input,
+.expense-group-form select { width: 100%; min-height: 44px; border: 1px solid #d8d5cc; border-radius: 10px; background: #fff; padding: 0 12px; color: var(--ink); font: 14px 'Inter', sans-serif; }
+.expense-group-examples { display: flex; gap: 6px; padding: 16px 0 4px; overflow-x: auto; }
+.expense-group-examples span { white-space: nowrap; border-radius: 999px; background: #e4f0ec; padding: 6px 10px; color: var(--teal); font-size: 10px; }
+.expense-form-grid { display: grid; grid-template-columns: 1fr 120px; gap: 10px; }
+.create-expense-group { width: 100%; min-height: 46px; margin-top: 14px; border: 0; border-radius: 11px; background: var(--teal); color: #fff; font-weight: 700; cursor: pointer; }
+.create-expense-group:disabled { opacity: .6; cursor: wait; }
+.settle-section-title { margin: 24px 0 10px; }
+.settle-destination-row .row-kicker { margin: 0 0 3px; color: var(--teal); opacity: .72; font: 9px 'IBM Plex Mono', monospace; letter-spacing: .09em; }
+.expense-only-banner { display: grid; grid-template-columns: 44px 1fr; gap: 12px; margin: 18px 0 22px; padding: 14px; border: 1px solid #cfe0da; border-radius: 14px; background: #eef7f3; }
+.expense-only-banner > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: var(--teal); color: #fff; font-size: 19px; }
+.expense-only-banner strong { display: block; margin: 2px 0 3px; }
+.expense-only-banner p { margin: 0; opacity: .62; font-size: 12px; line-height: 1.45; }
+.trip-bottom-nav.expense-group-nav { grid-template-columns: repeat(3, 1fr); }
+.add-cost { display: grid; grid-template-columns: minmax(0, 1fr) 120px 130px auto; align-items: end; }
+.add-cost-title { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2px; }
+.add-cost-title strong, .add-cost-title small { display: block; }
+.add-cost-title small { opacity: .48; font-size: 10px; }
+.add-cost > input { width: 100%; min-height: 42px; }
+.expense-amount-input { min-height: 42px; display: flex; align-items: center; padding-left: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.expense-amount-input > span { color: var(--teal); font: 600 11px 'IBM Plex Mono', monospace; }
+.add-cost .expense-amount-input input { width: 100%; min-width: 0; border: 0; background: transparent; box-shadow: none; }
+.add-cost > select { min-height: 42px; }
+.add-cost > button { min-height: 42px; }
+
+@media (max-width: 600px) {
+  .expense-form-grid { grid-template-columns: 1fr; }
+  .add-cost { grid-template-columns: 1fr 1fr; }
+  .add-cost-title, .add-cost > input:first-of-type { grid-column: 1 / -1; }
+  .add-cost > select { min-width: 0; width: 100%; }
+  .add-cost > button { grid-column: 1 / -1; min-height: 46px; }
+}
