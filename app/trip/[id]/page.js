@@ -37,16 +37,44 @@ function initials(name) {
     .map((w) => w[0]?.toUpperCase())
     .join("");
 }
-function Avatar({ name, size = 26 }) {
+function Avatar({ name, avatar, size = 26 }) {
+  const isPhoto = avatar?.startsWith("data:image") || avatar?.startsWith("https://");
   return (
     <span
-      className="avatar"
+      className={`avatar${isPhoto ? " avatar-photo" : ""}`}
       style={{ width: size, height: size, fontSize: size * 0.42, background: avatarColor(name) }}
       title={name}
     >
-      {initials(name)}
+      {isPhoto ? <img src={avatar} alt="" /> : avatar || initials(name)}
     </span>
   );
+}
+
+const AVATAR_OPTIONS = ["🧭", "😎", "🌴", "⛰️", "🌊", "🏕️", "🛫", "📸"];
+
+function compressProfilePhoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = reject;
+      image.onload = () => {
+        const size = 220;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext("2d");
+        const scale = Math.max(size / image.width, size / image.height);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.76));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 const SUGGESTIONS = [
@@ -228,6 +256,30 @@ function coverForTrip(name = "") {
     "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=85";
 }
 
+function useDestinationPhotos(name) {
+  const [photos, setPhotos] = useState([coverForTrip(name)]);
+
+  useEffect(() => {
+    if (!name) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      action: "query", format: "json", formatversion: "2", origin: "*",
+      generator: "search", gsrsearch: `${name} landmarks tourism`, gsrnamespace: "0", gsrlimit: "10",
+      prop: "pageimages", piprop: "thumbnail", pithumbsize: "1600", pilimit: "10",
+    });
+    fetch(`https://en.wikipedia.org/w/api.php?${params}`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Image search failed")))
+      .then((payload) => {
+        const found = (payload.query?.pages || []).sort((a, b) => (a.index || 0) - (b.index || 0)).map((page) => page.thumbnail?.source).filter(Boolean);
+        if (found.length) setPhotos([...new Set(found)].slice(0, 6));
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [name]);
+
+  return photos;
+}
+
 function mapsUrl(activity) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.location || activity.name)}`;
 }
@@ -306,12 +358,21 @@ export default function TripPage() {
   });
   const [currency, setCurrency] = useState("EUR");
   const [justAddedId, setJustAddedId] = useState(null);
+  const [heroPhotoIndex, setHeroPhotoIndex] = useState(0);
   const itemRefs = useRef({});
   const addFormRef = useRef(null);
+  const destinationPhotos = useDestinationPhotos(displayGroupName(trip?.name));
 
   useEffect(() => {
     if (isExpenseGroupName(trip?.name) && activeTab === "plan") setActiveTab("settle");
   }, [trip?.name, activeTab]);
+
+  useEffect(() => {
+    setHeroPhotoIndex(0);
+    if (destinationPhotos.length < 2) return;
+    const timer = setInterval(() => setHeroPhotoIndex((index) => (index + 1) % destinationPhotos.length), 6500);
+    return () => clearInterval(timer);
+  }, [destinationPhotos]);
 
   const load = useCallback(async () => {
     const { data: tripData } = await supabase.from("trips").select("*").eq("id", tripId).single();
@@ -378,7 +439,8 @@ export default function TripPage() {
     if (!finalName) return;
     const existing = travelers.find((t) => t.name.toLowerCase() === finalName.toLowerCase());
     if (!existing) {
-      await supabase.from("travelers").insert({ trip_id: tripId, name: finalName });
+      const savedAvatar = localStorage.getItem("wayfare_profile_avatar") || null;
+      await supabase.from("travelers").insert({ trip_id: tripId, name: finalName, avatar: savedAvatar });
     }
     localStorage.setItem(`wayfare_name_${tripId}`, finalName);
     setMe(finalName);
@@ -392,6 +454,33 @@ export default function TripPage() {
   function showNotice(text, type = "success") {
     setActionNotice({ text, type });
     window.setTimeout(() => setActionNotice(null), 3200);
+  }
+
+  async function updateMyAvatar(avatar) {
+    const traveler = myTraveler();
+    if (!traveler) return;
+    setTravelers((current) => current.map((item) => item.id === traveler.id ? { ...item, avatar } : item));
+    localStorage.setItem("wayfare_profile_avatar", avatar);
+    const { error } = await supabase.from("travelers").update({ avatar }).eq("id", traveler.id);
+    if (error) showNotice(`Avatar wasn't saved: ${error.message}`, "error");
+    else showNotice("Avatar updated.");
+  }
+
+  async function chooseMyPhoto(file) {
+    if (!file) return;
+    try {
+      await updateMyAvatar(await compressProfilePhoto(file));
+    } catch {
+      showNotice("That photo couldn't be used. Try a JPG or PNG.", "error");
+    }
+  }
+
+  async function updateTripDuration(value) {
+    const duration_days = Math.max(1, Math.min(30, Number(value) || 1));
+    setTrip((current) => ({ ...current, duration_days }));
+    const { error } = await supabase.from("trips").update({ duration_days }).eq("id", tripId);
+    if (error) showNotice(`Trip length wasn't saved: ${error.message}`, "error");
+    else showNotice(`Trip updated to ${duration_days} day${duration_days === 1 ? "" : "s"}.`);
   }
 
   async function castVote(activityId, value) {
@@ -584,6 +673,8 @@ export default function TripPage() {
 
   const expenseOnly = isExpenseGroupName(trip?.name);
   const tripDisplayName = displayGroupName(trip?.name);
+  const tripDays = Math.max(1, Number(trip?.duration_days) || 3);
+  const dayOptions = Array.from({ length: tripDays }, (_, index) => `Day ${index + 1}`);
   const myBalance = balances.find((b) => b.id === myTraveler()?.id);
   const money = (value, decimals = 0) => `${CURRENCIES[currency].symbol}${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: decimals })}`;
   const updateFeed = useMemo(() => {
@@ -625,7 +716,7 @@ export default function TripPage() {
             <div className="traveler-chips">
               {travelers.map((t) => (
                 <button key={t.id} className="traveler-chip" onClick={() => joinAsTraveler(t.name)}>
-                  <Avatar name={t.name} size={20} /> {t.name}
+                  <Avatar name={t.name} avatar={t.avatar} size={20} /> {t.name}
                 </button>
               ))}
             </div>
@@ -640,15 +731,16 @@ export default function TripPage() {
 
   return (
     <div className="trip-shell">
-      <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${coverForTrip(tripDisplayName)})` }}>
+      <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${destinationPhotos[heroPhotoIndex] || coverForTrip(tripDisplayName)})` }}>
         <div className="hero-nav"><a className="all-plans-back hero-back" href={expenseOnly ? "/?view=settle" : "/"}>← {expenseOnly ? "All groups" : "All plans"}</a><button className="share-btn" onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied — send it to the group."); }}><Icon name="arrow" style={{ width: 14, height: 14 }} />Invite friends</button></div>
         <div className="hero-content">
           <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>
           <h1>{tripDisplayName}</h1>
           <div className="hero-meta">
-            <span className="traveler-stack">{travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} size={28} />)}</span>
+            <span className="traveler-stack">{travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} avatar={t.avatar} size={28} />)}</span>
             <span>{travelers.length} {expenseOnly ? `member${travelers.length === 1 ? "" : "s"}` : `traveler${travelers.length === 1 ? "" : "s"}`}</span><span>•</span><span>{expenseOnly ? `${extraCosts.length} expense${extraCosts.length === 1 ? "" : "s"}` : `${activities.length} ideas`}</span><span>•</span><span>{expenseOnly ? `${money(total)} shared` : `${money(share)} each so far`}</span>
           </div>
+          {!expenseOnly && destinationPhotos.length > 1 && <div className="destination-photo-strip" aria-label={`${tripDisplayName} photos`}>{destinationPhotos.slice(0, 6).map((photo, index) => <button key={photo} className={heroPhotoIndex === index ? "active" : ""} aria-label={`Show destination photo ${index + 1}`} style={{ backgroundImage: `url(${photo})` }} onClick={() => setHeroPhotoIndex(index)} />)}</div>}
         </div>
       </div>
 
@@ -665,6 +757,8 @@ export default function TripPage() {
         <div className="summary-budget"><strong>{money(share)}</strong><span>Estimated per person</span></div>
       </div>}
 
+      {activeTab === "plan" && !expenseOnly && <div className="trip-day-planner"><div className="trip-day-planner-head"><div><span className="eyebrow">{tripDays}-day trip</span><strong>Choose a day to add an activity</strong></div><small>Day choices are shared with everyone</small></div><div className="trip-day-buttons">{dayOptions.map((day) => { const count = activities.filter((activity) => (activity.day_label || "Day 1") === day).length; return <button key={day} onClick={() => { setNewActivity((current) => ({ ...current, day_label: day })); setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}><strong>{day}</strong><small>{count} activit{count === 1 ? "y" : "ies"}</small></button>; })}</div></div>}
+
       <section className={activeTab === "plan" ? "tab-panel" : "tab-panel is-hidden"}>
       <div className="pass legacy-pass">
         <div className="pass-top">
@@ -673,7 +767,7 @@ export default function TripPage() {
             <h1>{tripDisplayName}</h1>
             <div className="pass-dates">
               <span className="traveler-stack">
-                {travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} size={22} />)}
+                {travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} avatar={t.avatar} size={22} />)}
               </span>
               {travelers.length} traveler{travelers.length === 1 ? "" : "s"} · you're {me}
             </div>
@@ -765,7 +859,7 @@ export default function TripPage() {
                       {votes.map((v) => {
                         const t = travelers.find((tr) => tr.id === v.traveler_id);
                         if (!t) return null;
-                        return <span key={v.id} className={`voter-dot vd-${v.value}`}><Avatar name={t.name} size={18} /></span>;
+                        return <span key={v.id} className={`voter-dot vd-${v.value}`}><Avatar name={t.name} avatar={t.avatar} size={18} /></span>;
                       })}
                     </div>
                   )}
@@ -810,7 +904,7 @@ export default function TripPage() {
         <label className="field-label">Activity <b>required</b></label>
         <input className={activityError && !newActivity.name.trim() ? "input-error" : ""} placeholder="e.g. Sagrada Família tour" value={newActivity.name} onChange={(e) => { setNewActivity({ ...newActivity, name: e.target.value }); setActivityError(""); }} />
         <div className="composer-grid">
-          <div><label className="field-label">Day</label><input placeholder="Day 1" value={newActivity.day_label} onFocus={(event) => event.currentTarget.select()} onChange={(e) => setNewActivity({ ...newActivity, day_label: e.target.value })} /></div>
+          <div><label className="field-label">Day</label><select className="time-select" aria-label="Activity day" value={newActivity.day_label} onChange={(e) => setNewActivity({ ...newActivity, day_label: e.target.value })}>{newActivity.day_label && !dayOptions.includes(newActivity.day_label) && <option value={newActivity.day_label}>{newActivity.day_label} (outside trip length)</option>}{dayOptions.map((day) => <option key={day} value={day}>{day}</option>)}</select></div>
           <div><label className="field-label">Date</label><input type="date" value={newActivity.day_date} onChange={(e) => setNewActivity({ ...newActivity, day_date: e.target.value })} /></div>
           <div><label className="field-label">Time</label><select className="time-select" value={newActivity.time_text} onChange={(e) => setNewActivity({ ...newActivity, time_text: e.target.value })}><option value="">Select a time</option>{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></div>
           <div><label className="field-label">Cost per person</label><div className="composer-money-input"><span>{CURRENCIES[currency].symbol}</span><input aria-label="New activity cost per person" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0" value={newActivity.cost_pp} onFocus={(event) => event.currentTarget.select()} onChange={(e) => setNewActivity({ ...newActivity, cost_pp: e.target.value })} /></div></div>
@@ -887,7 +981,7 @@ export default function TripPage() {
         )}
         {balances.map((b) => (
           <div className="balance-row" key={b.id}>
-            <span className="ledger-name balance-name"><Avatar name={b.name} size={22} />{b.name}</span>
+            <span className="ledger-name balance-name"><Avatar name={b.name} avatar={travelers.find((traveler) => traveler.id === b.id)?.avatar} size={22} />{b.name}</span>
             <span className={b.net > 0.5 ? "balance-pos" : b.net < -0.5 ? "balance-neg" : "balance-zero"}>
               {b.net > 0.5 ? `gets back ${money(b.net)}` : b.net < -0.5 ? `owes ${money(Math.abs(b.net))}` : "settled"}
             </span>
@@ -898,9 +992,9 @@ export default function TripPage() {
           <div className="ledger-empty">Everyone's square.</div>
         ) : transfers.map((t, i) => (
           <div className="transfer-row" key={i}>
-            <Avatar name={t.from} size={24} /><span>{t.from}</span>
+            <Avatar name={t.from} avatar={travelers.find((traveler) => traveler.name === t.from)?.avatar} size={24} /><span>{t.from}</span>
             <Icon name="arrow" />
-            <Avatar name={t.to} size={24} /><span>{t.to}</span>
+            <Avatar name={t.to} avatar={travelers.find((traveler) => traveler.name === t.to)?.avatar} size={24} /><span>{t.to}</span>
             <span className="transfer-amt">{money(t.amt)}</span>
           </div>
         ))}
@@ -915,11 +1009,15 @@ export default function TripPage() {
 
       <section className={activeTab === "profile" ? "tab-panel" : "tab-panel is-hidden"}>
         <div className="profile-card trip-profile-card">
-          <div className="large-profile-bubble">{(me || "Y").slice(0, 1).toUpperCase()}</div>
+          <Avatar name={me} avatar={myTraveler()?.avatar} size={72} />
           <h3>{me}</h3><p>You are viewing the {tripDisplayName} {expenseOnly ? "expense group" : "group plan"}.</p>
+          <label className="field-label">Your avatar</label>
+          <div className="avatar-picker">{AVATAR_OPTIONS.map((avatar) => <button type="button" key={avatar} className={myTraveler()?.avatar === avatar ? "selected" : ""} onClick={() => updateMyAvatar(avatar)}>{avatar}</button>)}</div>
+          <label className="photo-upload-button">Add your photo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseMyPhoto(event.target.files?.[0])} /></label>
           <label className="field-label">{expenseOnly ? "Group" : "Trip"} currency</label>
           <select className="settings-select" value={currency} onChange={(e) => { const next = e.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
-          <div className="profile-members"><div className="field-label">{expenseOnly ? "Members" : "Travelers"}</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} size={24} />{traveler.name}</span>)}</div>
+          {!expenseOnly && <><label className="field-label">Trip duration</label><div className="profile-duration-control"><input key={tripDays} aria-label="Trip duration in days" type="number" min="1" max="30" defaultValue={tripDays} onBlur={(event) => updateTripDuration(event.target.value)} /><span>days · creates Day 1 to Day {tripDays}</span></div></>}
+          <div className="profile-members"><div className="field-label">{expenseOnly ? "Members" : "Travelers"}</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}</span>)}</div>
           <a className="all-plans-link" href={expenseOnly ? "/?view=settle" : "/"}>Back to {expenseOnly ? "Settle up" : "all plans"}</a>
         </div>
       </section>
