@@ -10,6 +10,17 @@ const NAV_ITEMS = [
   { id: "profile", icon: "○", label: "Profile" },
 ];
 
+const EXPENSE_GROUP_PREFIX = "WAYFARE_GROUP::";
+const CURRENCY_OPTIONS = ["EUR", "USD", "GBP", "AED"];
+
+function isExpenseGroup(trip) {
+  return String(trip?.name || "").startsWith(EXPENSE_GROUP_PREFIX);
+}
+
+function displayTripName(trip) {
+  return String(trip?.name || "").replace(EXPENSE_GROUP_PREFIX, "");
+}
+
 function tripCover(name = "") {
   return name.toLowerCase().includes("barcelona")
     ? "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=700&q=78"
@@ -25,8 +36,15 @@ export default function Home() {
   const [activeView, setActiveView] = useState("plans");
   const [trips, setTrips] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
+  const [groupName, setGroupName] = useState("");
+  const [groupCurrency, setGroupCurrency] = useState("EUR");
+  const [groupCreating, setGroupCreating] = useState(false);
+  const [groupFormOpen, setGroupFormOpen] = useState(false);
+  const [settleError, setSettleError] = useState("");
 
   useEffect(() => {
+    const requestedView = new URLSearchParams(window.location.search).get("view");
+    if (NAV_ITEMS.some((item) => item.id === requestedView)) setActiveView(requestedView);
     const savedProfile = localStorage.getItem("wayfare_profile_name") || "";
     setYourName(savedProfile);
     const tripIds = [];
@@ -42,6 +60,8 @@ export default function Home() {
   }, []);
 
   const tripById = useMemo(() => Object.fromEntries(trips.map((trip) => [trip.id, trip])), [trips]);
+  const planTrips = useMemo(() => trips.filter((trip) => !isExpenseGroup(trip)), [trips]);
+  const expenseGroups = useMemo(() => trips.filter(isExpenseGroup), [trips]);
 
   async function createTrip() {
     if (!tripName.trim() || !yourName.trim()) {
@@ -67,6 +87,34 @@ export default function Home() {
     router.push(`/trip/${trip.id}`);
   }
 
+  async function createExpenseGroup() {
+    if (!groupName.trim() || !yourName.trim()) {
+      setSettleError("Add a group name and your name first.");
+      return;
+    }
+    setGroupCreating(true);
+    setSettleError("");
+    const { data: group, error: groupErr } = await supabase.from("trips").insert({
+      name: `${EXPENSE_GROUP_PREFIX}${groupName.trim()}`,
+      currency: groupCurrency,
+    }).select().single();
+    if (groupErr) {
+      setSettleError(`Couldn't create this expense group: ${groupErr.message || "try again."}`);
+      setGroupCreating(false);
+      return;
+    }
+    const { error: travelerErr } = await supabase.from("travelers").insert({ trip_id: group.id, name: yourName.trim() });
+    if (travelerErr) {
+      setSettleError("Group created, but couldn't add you as a member.");
+      setGroupCreating(false);
+      return;
+    }
+    localStorage.setItem(`wayfare_name_${group.id}`, yourName.trim());
+    localStorage.setItem("wayfare_profile_name", yourName.trim());
+    localStorage.setItem(`wayfare_expense_group_${group.id}`, "true");
+    router.push(`/trip/${group.id}?view=settle`);
+  }
+
   return (
     <main className="mobile-app-home">
       <header className="app-header">
@@ -78,9 +126,9 @@ export default function Home() {
         {activeView === "plans" && (
           <section className="plans-home-view">
             <div className="app-welcome"><div className="eyebrow">Your trips</div><h1>Plans</h1><p>Create a trip, add suggestions, and let everyone vote.</p></div>
-            {trips.length > 0 && <div className="saved-trips">
-              <div className="section-title-row"><h2>In progress</h2><span>{trips.length}</span></div>
-              {trips.map((trip) => (
+            {planTrips.length > 0 && <div className="saved-trips">
+              <div className="section-title-row"><h2>In progress</h2><span>{planTrips.length}</span></div>
+              {planTrips.map((trip) => (
                 <button key={trip.id} className="saved-trip-card" onClick={() => router.push(`/trip/${trip.id}`)}>
                   <div className="trip-card-cover" style={{ backgroundImage: `url(${tripCover(trip.name)})` }} />
                   <div><small>GROUP PLAN</small><strong>{trip.name}</strong><span>Open proposals →</span></div>
@@ -100,9 +148,29 @@ export default function Home() {
           </section>
         )}
 
-        {activeView === "settle" && <section className="simple-app-view">
-          <div className="eyebrow">Shared expenses</div><h1>Settle up</h1><p className="view-intro">Open a trip to add expenses and see who owes whom.</p>
-          {trips.length ? trips.map((trip) => <button className="feed-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon">⇄</span><div><strong>{trip.name}</strong><small>View expenses and balances</small></div><b>›</b></button>) : <EmptyView title="Nothing to settle" text="Create your first trip from Plans." />}
+        {activeView === "settle" && <section className="simple-app-view settle-home-view">
+          <div className="eyebrow">Shared expenses</div><h1>Settle up</h1><p className="view-intro">Use a trip, or create an everyday group without planning anything first.</p>
+          <div className="settle-choice-card">
+            <button className="settle-new-group" onClick={() => setGroupFormOpen((open) => !open)}>
+              <span className="settle-choice-icon">＋</span><span><strong>New expense group</strong><small>Groceries, rent, dinners, roommates, or anything shared</small></span><b>{groupFormOpen ? "×" : "›"}</b>
+            </button>
+            {groupFormOpen && <div className="expense-group-form">
+              <div className="expense-group-examples"><span>Groceries</span><span>Apartment</span><span>Weekend dinner</span></div>
+              <label className="field-label">Group name</label>
+              <input placeholder="e.g. Apartment expenses" value={groupName} onChange={(event) => { setGroupName(event.target.value); setSettleError(""); }} />
+              <div className="expense-form-grid">
+                <div><label className="field-label">Your name</label><input placeholder="So everyone knows it's you" value={yourName} onChange={(event) => setYourName(event.target.value)} /></div>
+                <div><label className="field-label">Currency</label><select value={groupCurrency} onChange={(event) => setGroupCurrency(event.target.value)}>{CURRENCY_OPTIONS.map((code) => <option key={code} value={code}>{code}</option>)}</select></div>
+              </div>
+              {settleError && <p className="form-error">{settleError}</p>}
+              <button className="create-expense-group" onClick={createExpenseGroup} disabled={groupCreating}>{groupCreating ? "Creating…" : "Create group and add expenses →"}</button>
+            </div>}
+          </div>
+
+          {(expenseGroups.length > 0 || planTrips.length > 0) ? <div className="settle-lists">
+            {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <button className="feed-row settle-destination-row" key={group.id} onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon">⌂</span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div><b>›</b></button>)}</>}
+            {planTrips.length > 0 && <><div className="section-title-row settle-section-title"><h2>Trips</h2><span>{planTrips.length}</span></div>{planTrips.map((trip) => <button className="feed-row settle-destination-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon">✈</span><div><small className="row-kicker">TRIP EXPENSES</small><strong>{trip.name}</strong><small>Use during the trip or settle afterward</small></div><b>›</b></button>)}</>}
+          </div> : <EmptyView title="Nothing to settle yet" text="Create an expense group above, or make a trip from Plans." />}
         </section>}
 
         {activeView === "updates" && <section className="simple-app-view">
