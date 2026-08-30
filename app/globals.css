@@ -351,6 +351,8 @@ button { font-family: inherit; }
 .mobile-app-home { min-height: 100vh; background: #f8f7f3; padding-bottom: 104px; }
 .app-header { height: 76px; position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; max-width: 920px; margin: 0 auto; padding: 0 24px; background: rgba(248,247,243,.92); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(28,43,46,.08); }
 .app-header p { margin: 4px 0 0; font-size: 11px; opacity: .5; }
+.app-brand-lockup { display: flex; align-items: center; gap: 10px; }
+.app-logo { width: 39px; height: 39px; display: block; border-radius: 12px; box-shadow: 0 5px 14px rgba(18,63,56,.18); }
 .profile-bubble, .large-profile-bubble { display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--teal-deep); color: white; font-weight: 700; }
 .profile-bubble { width: 36px; height: 36px; }
 .large-profile-bubble { width: 70px; height: 70px; margin: 0 auto 24px; font: 500 28px 'Fraunces', serif; }
@@ -682,4 +684,99 @@ body { background: #e9ece8; }
   .add-cost-title, .add-cost > input:first-of-type { grid-column: 1 / -1; }
   .add-cost > select { min-width: 0; width: 100%; }
   .add-cost > button { grid-column: 1 / -1; min-height: 46px; }
+}
+
+/* ---------- Flexible Splitwise-style expense engine ---------- */
+.expense-ledger-row { align-items: flex-start; padding: 13px 0; }
+.expense-ledger-row .ledger-name { min-width: 0; }
+.expense-title-line, .expense-note, .expense-ledger-amounts b, .expense-ledger-amounts small { display: block; }
+.expense-title-line { font-weight: 700; }
+.expense-title-line .receipt-link { display: inline-block; margin-left: 7px; border-radius: 999px; padding: 3px 7px; background: #e8f2ee; color: var(--teal); font-size: 9px; text-decoration: none; vertical-align: 1px; }
+.expense-ledger-row .ledger-sub { display: block; margin-top: 3px; line-height: 1.45; }
+.expense-note { margin-top: 5px; max-width: 310px; opacity: .68; font-size: 11px; line-height: 1.45; }
+.expense-ledger-amounts { text-align: right; font-family: 'IBM Plex Mono', monospace; color: var(--gold); white-space: nowrap; }
+.expense-ledger-amounts b { font-size: 12px; }
+.expense-ledger-amounts small { margin-top: 3px; color: var(--ink); opacity: .45; font-size: 9px; }
+
+.expense-composer { margin: 20px -4px -4px; padding: 20px; border: 1px solid #cbdcd6; border-radius: 18px; background: linear-gradient(150deg, #f2f8f5, #fff 54%); }
+.expense-composer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 17px; }
+.expense-composer-head h3 { margin-top: 4px; font-size: 23px; }
+.expense-composer-head > span { border-radius: 999px; padding: 6px 9px; background: #deece7; color: var(--teal); font-size: 9px; font-weight: 700; }
+.expense-basic-grid, .expense-money-grid { display: grid; gap: 10px; }
+.expense-basic-grid { grid-template-columns: minmax(0, 1fr) 150px; }
+.expense-money-grid { grid-template-columns: minmax(0, 1fr) 150px; margin-top: 10px; }
+.expense-composer label { min-width: 0; }
+.expense-composer input, .expense-composer select, .expense-composer textarea { width: 100%; min-width: 0; border: 1px solid #d7d3c8; border-radius: 10px; background: #fff; color: var(--ink); padding: 10px 11px; font: 13px 'Inter', sans-serif; outline: 0; }
+.expense-composer input, .expense-composer select { min-height: 43px; }
+.expense-composer input:focus, .expense-composer select:focus, .expense-composer textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(31,111,99,.09); }
+.expense-composer .expense-amount-input { background: #fff; }
+.expense-composer .expense-amount-input input { min-height: 41px; padding-left: 6px; border: 0; box-shadow: none; }
+.expense-composer .field-label { display: block; margin: 0 0 6px; }
+.expense-composer .field-label i { opacity: .48; font-style: normal; text-transform: lowercase; }
+.exchange-rate-row { display: grid; grid-template-columns: 1fr 106px auto; align-items: center; gap: 8px; margin-top: 10px; padding: 10px; border-radius: 12px; background: #e7f1ed; }
+.exchange-rate-row strong, .exchange-rate-row small { display: block; }
+.exchange-rate-row small { margin-top: 2px; opacity: .54; font-size: 9px; }
+.exchange-rate-row input { min-height: 38px; padding: 7px; }
+.exchange-rate-row button { min-height: 38px; border: 0; border-radius: 9px; padding: 0 10px; background: var(--teal); color: #fff; font-size: 10px; cursor: pointer; }
+
+.expense-subhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 22px 0 9px; }
+.expense-subhead strong, .expense-subhead small { display: block; }
+.expense-subhead strong { font-size: 13px; }
+.expense-subhead small { margin-top: 2px; opacity: .48; font-size: 9px; }
+.expense-subhead > button { border: 0; background: transparent; color: var(--teal); font-size: 10px; font-weight: 700; cursor: pointer; }
+.expense-participants { display: flex; gap: 7px; overflow-x: auto; padding: 2px 1px 4px; }
+.expense-participants button { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; min-height: 42px; border: 1px solid #dedbd2; border-radius: 999px; padding: 6px 9px 6px 6px; background: #fff; color: var(--ink); cursor: pointer; }
+.expense-participants button span:nth-child(2) { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.expense-participants button b { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: #e9ebe7; color: #707975; font-size: 10px; }
+.expense-participants button.selected { border-color: var(--teal); background: #eaf4f0; }
+.expense-participants button.selected b { background: var(--teal); color: #fff; }
+
+.split-methods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.split-methods button { min-width: 0; border: 1px solid #d9d6cd; border-radius: 11px; padding: 9px 4px; background: #fff; color: var(--ink); cursor: pointer; }
+.split-methods strong, .split-methods small { display: block; }
+.split-methods strong { font-size: 11px; }
+.split-methods small { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .46; font-size: 8px; }
+.split-methods button.active { border-color: var(--teal); background: var(--teal); color: #fff; box-shadow: 0 7px 18px rgba(31,111,99,.18); }
+.split-preview { margin-top: 10px; overflow: hidden; border: 1px solid #e1ded5; border-radius: 12px; background: #fff; }
+.split-person { min-height: 48px; display: grid; grid-template-columns: minmax(0, 1fr) 132px; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #ece9e1; }
+.split-person:last-child { border-bottom: 0; }
+.split-person > span { min-width: 0; display: flex; align-items: center; gap: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.split-person > b { color: var(--teal); text-align: right; font: 600 11px 'IBM Plex Mono', monospace; }
+.split-person > label { position: relative; display: flex; align-items: center; }
+.split-person > label input { min-height: 35px; padding: 6px 50px 6px 8px; text-align: right; }
+.split-person > label small { position: absolute; right: 7px; opacity: .45; pointer-events: none; font-size: 8px; }
+.split-person > em { grid-column: 2; margin-top: -8px; text-align: right; opacity: .48; font-size: 8px; font-style: normal; }
+.split-error { margin-top: 8px; border-radius: 9px; padding: 8px 10px; background: #f8e9e2; color: #a14731; font-size: 10px; }
+.expense-notes { display: block; margin-top: 16px; }
+.expense-notes textarea { resize: vertical; }
+.receipt-picker { display: flex; align-items: center; gap: 9px; margin-top: 12px; }
+.receipt-picker > label { position: relative; display: inline-flex; min-height: 39px; align-items: center; border: 1px dashed #a9c5bb; border-radius: 10px; padding: 0 12px; background: #f7fbf9; color: var(--teal); font-size: 10px; font-weight: 700; cursor: pointer; }
+.receipt-picker input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.receipt-picker img { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; }
+.receipt-picker > button { border: 0; background: transparent; color: var(--coral); font-size: 9px; cursor: pointer; }
+.add-expense-button { width: 100%; min-height: 48px; margin-top: 16px; border: 0; border-radius: 12px; background: var(--teal-deep); color: #fff; font-weight: 750; cursor: pointer; box-shadow: 0 10px 24px rgba(18,63,56,.16); }
+.add-expense-button:disabled { opacity: .6; cursor: wait; }
+
+.transfer-row { flex-wrap: wrap; }
+.mark-paid-button { min-height: 31px; margin-left: 4px; border: 1px solid var(--teal); border-radius: 9px; padding: 0 9px; background: #eaf4f0; color: var(--teal); font-size: 9px; font-weight: 750; cursor: pointer; }
+.mark-paid-button:disabled { opacity: .55; }
+.settlement-history { overflow: hidden; border: 1px solid #e0ddd4; border-radius: 12px; }
+.settlement-row { display: grid; grid-template-columns: 31px 1fr auto; align-items: center; gap: 9px; padding: 10px; border-bottom: 1px solid #ece9e1; }
+.settlement-row:last-child { border-bottom: 0; }
+.settlement-check { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #e6f1ed; color: var(--teal); font-weight: 800; }
+.settlement-row strong, .settlement-row small { display: block; }
+.settlement-row strong { font-size: 11px; }
+.settlement-row small { margin-top: 3px; opacity: .5; font-size: 9px; }
+.settlement-row button { border: 0; background: transparent; color: var(--coral); font-size: 9px; cursor: pointer; }
+
+@media (max-width: 480px) {
+  .expense-composer { margin-left: -8px; margin-right: -8px; padding: 16px; }
+  .expense-basic-grid, .expense-money-grid { grid-template-columns: 1fr; }
+  .exchange-rate-row { grid-template-columns: 1fr 100px; }
+  .exchange-rate-row button { grid-column: 1 / -1; }
+  .split-methods small { display: none; }
+  .split-person { grid-template-columns: minmax(0, 1fr) 122px; }
+  .expense-ledger-row { gap: 8px; }
+  .expense-ledger-row .ledger-sub { max-width: 240px; }
+  .transfer-row .mark-paid-button { flex-basis: 100%; margin: 3px 0 0 32px; }
 }
