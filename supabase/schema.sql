@@ -7,6 +7,7 @@ create table trips (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   currency text not null default 'EUR' check (currency in ('EUR','USD','GBP','AED')),
+  duration_days integer not null default 3,
   start_date date,
   end_date date,
   created_at timestamptz default now()
@@ -14,13 +15,17 @@ create table trips (
 
 -- Safe migration for Wayfare projects created with the original schema.
 alter table trips add column if not exists currency text not null default 'EUR';
+alter table trips add column if not exists duration_days integer not null default 3;
 
 create table travelers (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid references trips(id) on delete cascade,
   name text not null,
+  avatar text,
   created_at timestamptz default now()
 );
+
+alter table travelers add column if not exists avatar text;
 
 create table activities (
   id uuid primary key default gen_random_uuid(),
