@@ -352,7 +352,6 @@ button { font-family: inherit; }
 .app-header { height: 76px; position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; max-width: 920px; margin: 0 auto; padding: 0 24px; background: rgba(248,247,243,.92); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(28,43,46,.08); }
 .app-header p { margin: 4px 0 0; font-size: 11px; opacity: .5; }
 .app-brand-lockup { display: flex; align-items: center; gap: 10px; }
-.app-logo { width: 39px; height: 39px; display: block; border-radius: 12px; box-shadow: 0 5px 14px rgba(18,63,56,.18); }
 .profile-bubble, .large-profile-bubble { display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--teal-deep); color: white; font-weight: 700; }
 .profile-bubble { width: 36px; height: 36px; }
 .large-profile-bubble { width: 70px; height: 70px; margin: 0 auto 24px; font: 500 28px 'Fraunces', serif; }
