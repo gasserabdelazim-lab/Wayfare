@@ -303,25 +303,13 @@ function displayGroupName(name) {
   return String(name || "").replace(EXPENSE_GROUP_PREFIX, "");
 }
 
-const DESTINATION_COVERS = [
-  { match: /cairo|giza/i, url: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/The_Giza_Pyramids.jpg/1280px-The_Giza_Pyramids.jpg" },
-  { match: /barcelona/i, url: "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=1600&q=85" },
-  { match: /paris/i, url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=85" },
-  { match: /london/i, url: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1600&q=85" },
-  { match: /tokyo/i, url: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1600&q=85" },
-  { match: /dubai/i, url: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1600&q=85" },
-  { match: /rome/i, url: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=1600&q=85" },
-];
-
-function coverForTrip(name = "") {
-  return DESTINATION_COVERS.find((item) => item.match.test(name))?.url ||
-    "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=85";
-}
+const FALLBACK_COVER = "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=85";
 
 function useDestinationPhotos(name) {
-  const [photos, setPhotos] = useState([coverForTrip(name)]);
+  const [photos, setPhotos] = useState([]);
 
   useEffect(() => {
+    setPhotos([]);
     if (!name) return;
     const controller = new AbortController();
     const params = new URLSearchParams({
@@ -333,13 +321,13 @@ function useDestinationPhotos(name) {
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Image search failed")))
       .then((payload) => {
         const found = (payload.query?.pages || []).sort((a, b) => (a.index || 0) - (b.index || 0)).map((page) => page.thumbnail?.source).filter(Boolean);
-        if (found.length) setPhotos([...new Set([coverForTrip(name), ...found])].slice(0, 6));
+        setPhotos(found.slice(0, 6));
       })
       .catch(() => {});
     return () => controller.abort();
   }, [name]);
 
-  return photos;
+  return photos.length ? photos : [FALLBACK_COVER];
 }
 
 function mapsUrl(activity) {
@@ -981,7 +969,7 @@ export default function TripPage() {
 
   return (
     <div className="trip-shell">
-      <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${destinationPhotos[heroPhotoIndex] || coverForTrip(tripDisplayName)})` }}>
+      <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${destinationPhotos[heroPhotoIndex] || FALLBACK_COVER})` }}>
         <div className="hero-nav"><a className="all-plans-back hero-back" href={expenseOnly ? "/?view=settle" : "/"}>← {expenseOnly ? "All groups" : "All plans"}</a><button className="share-btn" onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied — send it to the group."); }}><Icon name="arrow" style={{ width: 14, height: 14 }} />Invite friends</button></div>
         <div className="hero-content">
           <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>
@@ -1281,10 +1269,15 @@ export default function TripPage() {
       <section className={activeTab === "profile" ? "tab-panel" : "tab-panel is-hidden"}>
         <div className="profile-card trip-profile-card">
           <Avatar name={me} avatar={myTraveler()?.avatar} size={72} />
-          <h3>{me}</h3><p>You are viewing the {tripDisplayName} {expenseOnly ? "expense group" : "group plan"}.</p>
+          <h3>{me}</h3><p>Your profile — this photo and avatar follow you to every trip and group you join.</p>
           <label className="field-label">Your avatar</label>
           <div className="avatar-picker">{AVATAR_OPTIONS.map((avatar) => <button type="button" key={avatar} className={myTraveler()?.avatar === avatar ? "selected" : ""} onClick={() => updateMyAvatar(avatar)}>{avatar}</button>)}</div>
           <label className="photo-upload-button">Add your photo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseMyPhoto(event.target.files?.[0])} /></label>
+        </div>
+
+        <div className="profile-card trip-profile-card trip-settings-card">
+          <h3>{expenseOnly ? "Group" : "Trip"} settings</h3>
+          <p>Shared settings for {tripDisplayName}, visible to everyone on this {expenseOnly ? "group" : "trip"}.</p>
           <label className="field-label">{expenseOnly ? "Group" : "Trip"} currency</label>
           <select className="settings-select" value={currency} onChange={(e) => { const next = e.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
           {!expenseOnly && <><label className="field-label">Trip duration</label><div className="profile-duration-control"><input key={tripDays} aria-label="Trip duration in days" type="number" min="1" max="30" defaultValue={tripDays} onBlur={(event) => updateTripDuration(event.target.value)} /><span>days · creates Day 1 to Day {tripDays}</span></div></>}
