@@ -210,7 +210,7 @@ export default function Home() {
   return (
     <main className="mobile-app-home">
       <header className="app-header">
-        <div className="app-brand-lockup"><img className="app-logo" src="/icon-192x192.png" alt="Wayfare" /><div><div className="brand-mark dark">WAYFARE</div><p>Plan together. Settle simply.</p></div></div>
+        <div className="app-brand-lockup"><div><div className="brand-mark dark">WAYFARE</div><p>Plan together. Settle simply.</p></div></div>
         <AvatarPreview name={yourName} avatar={profileAvatar} />
       </header>
 
