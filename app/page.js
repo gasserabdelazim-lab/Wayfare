@@ -52,10 +52,14 @@ function compressProfilePhoto(file) {
   });
 }
 
+const FALLBACK_COVER = "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=78";
+
 function DestinationCover({ name }) {
-  const [photos, setPhotos] = useState([tripCover(name)]);
+  const [photos, setPhotos] = useState([]);
 
   useEffect(() => {
+    setPhotos([]);
+    if (!name) return;
     const controller = new AbortController();
     const params = new URLSearchParams({
       action: "query", format: "json", formatversion: "2", origin: "*",
@@ -66,19 +70,14 @@ function DestinationCover({ name }) {
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Image search failed")))
       .then((payload) => {
         const found = (payload.query?.pages || []).sort((a, b) => (a.index || 0) - (b.index || 0)).map((page) => page.thumbnail?.source).filter(Boolean);
-        if (found.length) setPhotos([...new Set([tripCover(name), ...found])].slice(0, 3));
+        setPhotos(found.slice(0, 3));
       })
       .catch(() => {});
     return () => controller.abort();
   }, [name]);
 
-  return <div className="trip-card-cover destination-cover-collage">{photos.slice(0, 3).map((photo, index) => <img key={photo} className={`cover-photo cover-photo-${index + 1}`} src={photo} alt="" />)}</div>;
-}
-
-function tripCover(name = "") {
-  if (/cairo|giza/i.test(name)) return "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/The_Giza_Pyramids.jpg/1280px-The_Giza_Pyramids.jpg";
-  if (/barcelona/i.test(name)) return "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=700&q=78";
-  return "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=78";
+  const shown = photos.length ? photos : [FALLBACK_COVER];
+  return <div className="trip-card-cover destination-cover-collage">{shown.map((photo, index) => <img key={photo} className={`cover-photo cover-photo-${index + 1}`} src={photo} alt="" />)}</div>;
 }
 
 export default function Home() {
