@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.vercel/
+.env*
+npm-debug.log*
+supabase/.temp/
+

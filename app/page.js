@@ -2,12 +2,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
+import NavIcon from "../components/NavIcon";
+import AccountPanel from "../components/AccountPanel";
+import { destinationInfo, findDestinationPhotos } from "../lib/destinations";
+import { useWayfareAccount } from "../lib/useWayfareAccount";
 
 const NAV_ITEMS = [
-  { id: "plans", icon: "☷", label: "Plans" },
-  { id: "settle", icon: "⇄", label: "Settle up" },
-  { id: "updates", icon: "✦", label: "Updates" },
-  { id: "profile", icon: "○", label: "Profile" },
+  { id: "plans", icon: "plans", label: "Plans" },
+  { id: "settle", icon: "settle", label: "Settle up" },
+  { id: "updates", icon: "updates", label: "Updates" },
+  { id: "profile", icon: "profile", label: "Profile" },
 ];
 
 const EXPENSE_GROUP_PREFIX = "WAYFARE_GROUP::";
@@ -52,38 +56,55 @@ function compressProfilePhoto(file) {
   });
 }
 
-const FALLBACK_COVER = "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=78";
-
 function DestinationCover({ name }) {
-  const [photos, setPhotos] = useState([]);
+  const [photos, setPhotos] = useState(destinationInfo(name).photos.slice(0, 3));
 
   useEffect(() => {
-    setPhotos([]);
-    if (!name) return;
     const controller = new AbortController();
-    const params = new URLSearchParams({
-      action: "query", format: "json", formatversion: "2", origin: "*",
-      generator: "search", gsrsearch: `${name} landmarks tourism`, gsrnamespace: "0", gsrlimit: "8",
-      prop: "pageimages", piprop: "thumbnail", pithumbsize: "1000", pilimit: "8",
-    });
-    fetch(`https://en.wikipedia.org/w/api.php?${params}`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Image search failed")))
-      .then((payload) => {
-        const found = (payload.query?.pages || []).sort((a, b) => (a.index || 0) - (b.index || 0)).map((page) => page.thumbnail?.source).filter(Boolean);
-        setPhotos(found.slice(0, 3));
-      })
+    setPhotos(destinationInfo(name).photos.slice(0, 3));
+    findDestinationPhotos(name, { size: 1000, limit: 3, signal: controller.signal })
+      .then((found) => found.length && setPhotos(found))
       .catch(() => {});
     return () => controller.abort();
   }, [name]);
 
-  const shown = photos.length ? photos : [FALLBACK_COVER];
-  return <div className="trip-card-cover destination-cover-collage">{shown.map((photo, index) => <img key={photo} className={`cover-photo cover-photo-${index + 1}`} src={photo} alt="" />)}</div>;
+  return <div className="trip-card-cover destination-cover-collage">{photos.slice(0, 3).map((photo, index) => <img key={photo} className={`cover-photo cover-photo-${index + 1}`} src={photo} alt="" />)}</div>;
+}
+
+function dateFromInput(value) {
+  return value ? new Date(`${value}T12:00:00`) : null;
+}
+
+function endDateForDuration(startDate, duration) {
+  const date = dateFromInput(startDate);
+  if (!date) return "";
+  date.setDate(date.getDate() + Math.max(1, Number(duration) || 1) - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function inclusiveDays(startDate, endDate) {
+  const start = dateFromInput(startDate);
+  const end = dateFromInput(endDate);
+  if (!start || !end || end < start) return null;
+  return Math.round((end - start) / 86400000) + 1;
+}
+
+function tripDateLabel(trip) {
+  if (!trip?.start_date) return `${trip?.duration_days || 3} DAYS`;
+  const start = dateFromInput(trip.start_date);
+  const end = dateFromInput(trip.end_date || trip.start_date);
+  const startText = start.toLocaleDateString([], { month: "short", day: "numeric" });
+  const endText = end.toLocaleDateString([], { month: "short", day: "numeric" });
+  return `${startText} – ${endText} · ${trip?.duration_days || inclusiveDays(trip.start_date, trip.end_date) || 1} DAYS`;
 }
 
 export default function Home() {
   const router = useRouter();
+  const account = useWayfareAccount();
   const [tripName, setTripName] = useState("");
   const [tripDays, setTripDays] = useState(3);
+  const [tripStartDate, setTripStartDate] = useState("");
+  const [tripEndDate, setTripEndDate] = useState("");
   const [yourName, setYourName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -96,6 +117,9 @@ export default function Home() {
   const [groupFormOpen, setGroupFormOpen] = useState(false);
   const [settleError, setSettleError] = useState("");
   const [profileAvatar, setProfileAvatar] = useState("");
+  const [profileHome, setProfileHome] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileCurrency, setProfileCurrency] = useState("EUR");
   const [deletePlanTarget, setDeletePlanTarget] = useState(null);
   const [deletingPlan, setDeletingPlan] = useState(false);
   const [actionNotice, setActionNotice] = useState("");
@@ -105,8 +129,15 @@ export default function Home() {
     if (NAV_ITEMS.some((item) => item.id === requestedView)) setActiveView(requestedView);
     const savedProfile = localStorage.getItem("wayfare_profile_name") || "";
     const savedAvatar = localStorage.getItem("wayfare_profile_avatar") || "";
+    const savedHome = localStorage.getItem("wayfare_profile_home") || "";
+    const savedBio = localStorage.getItem("wayfare_profile_bio") || "";
+    const savedCurrency = localStorage.getItem("wayfare_profile_currency") || "EUR";
     setYourName(savedProfile);
     setProfileAvatar(savedAvatar);
+    setProfileHome(savedHome);
+    setProfileBio(savedBio);
+    setProfileCurrency(CURRENCY_OPTIONS.includes(savedCurrency) ? savedCurrency : "EUR");
+    setGroupCurrency(CURRENCY_OPTIONS.includes(savedCurrency) ? savedCurrency : "EUR");
     const tripIds = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i) || "";
@@ -119,9 +150,85 @@ export default function Home() {
       .then(({ data }) => setRecentActivities(data || []));
   }, []);
 
+  useEffect(() => {
+    if (!account.profile) return;
+    const cloud = account.profile;
+    const nextName = cloud.display_name || "";
+    const nextAvatar = cloud.avatar || "";
+    const nextHome = cloud.home_city || "";
+    const nextBio = cloud.bio || "";
+    const nextCurrency = CURRENCY_OPTIONS.includes(cloud.preferred_currency) ? cloud.preferred_currency : "EUR";
+    setYourName(nextName);
+    setProfileAvatar(nextAvatar);
+    setProfileHome(nextHome);
+    setProfileBio(nextBio);
+    setProfileCurrency(nextCurrency);
+    setGroupCurrency(nextCurrency);
+    localStorage.setItem("wayfare_profile_name", nextName);
+    localStorage.setItem("wayfare_profile_avatar", nextAvatar);
+    localStorage.setItem("wayfare_profile_home", nextHome);
+    localStorage.setItem("wayfare_profile_bio", nextBio);
+    localStorage.setItem("wayfare_profile_currency", nextCurrency);
+  }, [account.profile]);
+
+  useEffect(() => {
+    if (!account.user) return;
+    supabase.from("travelers").select("trip_id").eq("user_id", account.user.id).then(async ({ data }) => {
+      const accountTripIds = [...new Set((data || []).map((item) => item.trip_id).filter(Boolean))];
+      if (!accountTripIds.length) return;
+      const { data: accountTrips } = await supabase.from("trips").select("id,name,start_date,end_date,created_at,currency,duration_days").in("id", accountTripIds);
+      setTrips((current) => {
+        const merged = new Map(current.map((trip) => [trip.id, trip]));
+        (accountTrips || []).forEach((trip) => merged.set(trip.id, trip));
+        return [...merged.values()].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+      });
+      const { data: accountActivities } = await supabase.from("activities").select("id,trip_id,name,created_at").in("trip_id", accountTripIds).order("created_at", { ascending: false }).limit(20);
+      setRecentActivities((current) => {
+        const merged = new Map(current.map((activity) => [activity.id, activity]));
+        (accountActivities || []).forEach((activity) => merged.set(activity.id, activity));
+        return [...merged.values()].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
+      });
+    });
+  }, [account.user]);
+
   const tripById = useMemo(() => Object.fromEntries(trips.map((trip) => [trip.id, trip])), [trips]);
   const planTrips = useMemo(() => trips.filter((trip) => !isExpenseGroup(trip)), [trips]);
   const expenseGroups = useMemo(() => trips.filter(isExpenseGroup), [trips]);
+
+  function changeTripDuration(value) {
+    const nextDays = Math.max(1, Math.min(30, Number(value) || 1));
+    setTripDays(nextDays);
+    if (tripStartDate) setTripEndDate(endDateForDuration(tripStartDate, nextDays));
+  }
+
+  function changeTripStartDate(value) {
+    setTripStartDate(value);
+    setTripEndDate(value ? endDateForDuration(value, tripDays) : "");
+  }
+
+  function changeTripEndDate(value) {
+    setTripEndDate(value);
+    const days = inclusiveDays(tripStartDate, value);
+    if (days) setTripDays(Math.min(30, days));
+  }
+
+  async function saveProfile() {
+    localStorage.setItem("wayfare_profile_name", yourName.trim());
+    localStorage.setItem("wayfare_profile_avatar", profileAvatar);
+    localStorage.setItem("wayfare_profile_home", profileHome.trim());
+    localStorage.setItem("wayfare_profile_bio", profileBio.trim());
+    localStorage.setItem("wayfare_profile_currency", profileCurrency);
+    setGroupCurrency(profileCurrency);
+    const cloudResult = await account.saveProfile({ name: yourName, avatar: profileAvatar, home: profileHome, bio: profileBio, currency: profileCurrency });
+    if (cloudResult.error) setActionNotice(`Saved on this device, but cloud sync failed: ${cloudResult.error.message}`);
+    else setActionNotice(account.user ? "Your profile was saved and synced." : "Your guest profile was saved on this device.");
+    setTimeout(() => setActionNotice(""), 3200);
+  }
+
+  function navigateView(view) {
+    setActiveView(view);
+    router.replace(view === "plans" ? "/" : `/?view=${view}`, { scroll: false });
+  }
 
   async function createTrip() {
     if (!tripName.trim() || !yourName.trim()) {
@@ -130,13 +237,20 @@ export default function Home() {
     }
     setLoading(true);
     setError("");
-    const { data: trip, error: tripErr } = await supabase.from("trips").insert({ name: tripName.trim(), duration_days: Math.max(1, Math.min(30, Number(tripDays) || 1)) }).select().single();
+    const { data: trip, error: tripErr } = await supabase.from("trips").insert({
+      name: tripName.trim(),
+      duration_days: Math.max(1, Math.min(30, Number(tripDays) || 1)),
+      start_date: tripStartDate || null,
+      end_date: tripEndDate || null,
+      currency: profileCurrency,
+      created_by: account.user?.id || null,
+    }).select().single();
     if (tripErr) {
       setError(`Couldn't create the trip: ${tripErr.message || "try again."}`);
       setLoading(false);
       return;
     }
-    const { error: travelerErr } = await supabase.from("travelers").insert({ trip_id: trip.id, name: yourName.trim(), avatar: profileAvatar || null });
+    const { error: travelerErr } = await supabase.from("travelers").insert({ trip_id: trip.id, name: yourName.trim(), avatar: profileAvatar || null, user_id: account.user?.id || null, role: "owner" });
     if (travelerErr) {
       setError("Trip created, but couldn't add you as a traveler.");
       setLoading(false);
@@ -188,13 +302,14 @@ export default function Home() {
     const { data: group, error: groupErr } = await supabase.from("trips").insert({
       name: `${EXPENSE_GROUP_PREFIX}${groupName.trim()}`,
       currency: groupCurrency,
+      created_by: account.user?.id || null,
     }).select().single();
     if (groupErr) {
       setSettleError(`Couldn't create this expense group: ${groupErr.message || "try again."}`);
       setGroupCreating(false);
       return;
     }
-    const { error: travelerErr } = await supabase.from("travelers").insert({ trip_id: group.id, name: yourName.trim(), avatar: profileAvatar || null });
+    const { error: travelerErr } = await supabase.from("travelers").insert({ trip_id: group.id, name: yourName.trim(), avatar: profileAvatar || null, user_id: account.user?.id || null, role: "owner" });
     if (travelerErr) {
       setSettleError("Group created, but couldn't add you as a member.");
       setGroupCreating(false);
@@ -209,8 +324,8 @@ export default function Home() {
   return (
     <main className="mobile-app-home">
       <header className="app-header">
-        <div className="app-brand-lockup"><img className="app-logo" src="/icon-192x192.png" alt="Wayfare" /><div><div className="brand-mark dark">WAYFARE</div><p>Plan together. Settle simply.</p></div></div>
-        <AvatarPreview name={yourName} avatar={profileAvatar} />
+        <div><div className="brand-mark dark">WAYFARE</div><p>Plan together. Settle simply.</p></div>
+        <button type="button" className="header-profile-button" aria-label="Open your profile" onClick={() => navigateView("profile")}><AvatarPreview name={yourName} avatar={profileAvatar} /></button>
       </header>
 
       <div className="app-content">
@@ -223,7 +338,7 @@ export default function Home() {
                 <div className="saved-trip-row" key={trip.id}>
                   <button className="saved-trip-card" onClick={() => router.push(`/trip/${trip.id}`)}>
                     <DestinationCover name={trip.name} />
-                    <div><small>GROUP PLAN · {trip.duration_days || 3} DAYS</small><strong>{trip.name}</strong><span>Open proposals →</span></div>
+                    <div><small>GROUP PLAN · {tripDateLabel(trip)}</small><strong>{trip.name}</strong><span>Open proposals →</span></div>
                   </button>
                   <button className="plan-delete-button" aria-label={`Delete ${trip.name} plan`} title="Delete plan" onClick={() => setDeletePlanTarget(trip)}>×</button>
                 </div>
@@ -234,8 +349,15 @@ export default function Home() {
               <h2>Create a trip</h2>
               <label className="field-label">Trip title</label>
               <input placeholder="e.g. Barcelona with friends" value={tripName} onChange={(e) => setTripName(e.target.value)} />
+              <div className="trip-date-card">
+                <div className="trip-date-heading"><div><strong>Trip dates</strong><small>Optional — you can decide later</small></div><span>Calendar</span></div>
+                <div className="trip-date-grid">
+                  <label><span>Starts</span><input aria-label="Trip start date" type="date" value={tripStartDate} onChange={(event) => changeTripStartDate(event.target.value)} /></label>
+                  <label><span>Ends</span><input aria-label="Trip end date" type="date" min={tripStartDate || undefined} value={tripEndDate} onChange={(event) => changeTripEndDate(event.target.value)} disabled={!tripStartDate} /></label>
+                </div>
+              </div>
               <label className="field-label">How many days?</label>
-              <div className="duration-input"><button type="button" onClick={() => setTripDays((days) => Math.max(1, Number(days) - 1))}>−</button><input aria-label="Trip duration in days" type="number" min="1" max="30" value={tripDays} onChange={(event) => setTripDays(Math.max(1, Math.min(30, Number(event.target.value) || 1)))} /><span>days</span><button type="button" onClick={() => setTripDays((days) => Math.min(30, Number(days) + 1))}>＋</button></div>
+              <div className="duration-input"><button type="button" onClick={() => changeTripDuration(Number(tripDays) - 1)}>−</button><input aria-label="Trip duration in days" type="number" min="1" max="30" value={tripDays} onChange={(event) => changeTripDuration(event.target.value)} /><span>days</span><button type="button" onClick={() => changeTripDuration(Number(tripDays) + 1)}>＋</button></div>
               <label className="field-label">Your name</label>
               <input placeholder="So friends know it's you" value={yourName} onChange={(e) => setYourName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createTrip()} />
               {error && <p className="form-error">{error}</p>}
@@ -274,14 +396,31 @@ export default function Home() {
           {recentActivities.length ? recentActivities.map((activity) => <button className="feed-row" key={activity.id} onClick={() => router.push(`/trip/${activity.trip_id}?view=updates`)}><span className="feed-icon">✦</span><div><strong>{activity.name}</strong><small>Added to {tripById[activity.trip_id]?.name || "a group plan"}</small></div><b>›</b></button>) : <EmptyView title="No updates yet" text="New proposals and votes will appear here." />}
         </section>}
 
-        {activeView === "profile" && <section className="simple-app-view">
-          <div className="eyebrow">Profile & settings</div><h1>You</h1>
-          <div className="profile-card">
+        {activeView === "profile" && <section className="simple-app-view profile-view">
+          <div className="eyebrow">Your space</div><h1>Profile</h1><p className="view-intro">Make Wayfare feel like yours. This profile is used when you create or join plans and groups.</p>
+          <div className="profile-hero-card">
             <AvatarPreview name={yourName} avatar={profileAvatar} className="large-profile-bubble" />
-            <h3>Choose your avatar</h3>
-            <div className="avatar-picker">{AVATAR_OPTIONS.map((avatar) => <button key={avatar} className={profileAvatar === avatar ? "selected" : ""} onClick={() => { setProfileAvatar(avatar); localStorage.setItem("wayfare_profile_avatar", avatar); }}>{avatar}</button>)}</div>
-            <label className="photo-upload-button">Add your photo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseProfilePhoto(event.target.files?.[0])} /></label>
-            <label className="field-label">Display name</label><input placeholder="Your name" value={yourName} onChange={(e) => { setYourName(e.target.value); localStorage.setItem("wayfare_profile_name", e.target.value); }} /><p>Your profile is used when you join new trips and groups.</p>
+            <div><h2>{yourName.trim() || "Your name"}</h2><p>{profileHome.trim() || "Add your home city"}</p></div>
+            <span className="profile-device-badge">{account.user ? "Synced account" : "Guest on this device"}</span>
+          </div>
+          <div className="profile-stats" aria-label="Your Wayfare activity">
+            <div><strong>{planTrips.length}</strong><span>Trips</span></div>
+            <div><strong>{expenseGroups.length}</strong><span>Groups</span></div>
+            <div><strong>{recentActivities.length}</strong><span>Updates</span></div>
+          </div>
+          <AccountPanel account={account} displayName={yourName} />
+          <div className="profile-card profile-editor-card">
+            <div className="profile-section-heading"><div><h3>Photo or avatar</h3><p>Choose what friends see beside your votes and expenses.</p></div></div>
+            <div className="avatar-picker">{AVATAR_OPTIONS.map((avatar) => <button type="button" key={avatar} aria-label={`Use ${avatar} avatar`} className={profileAvatar === avatar ? "selected" : ""} onClick={() => setProfileAvatar(avatar)}>{avatar}</button>)}</div>
+            <label className="photo-upload-button">Upload your photo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseProfilePhoto(event.target.files?.[0])} /></label>
+            <div className="profile-fields">
+              <label><span className="field-label">Display name</span><input placeholder="Your name" value={yourName} onChange={(event) => setYourName(event.target.value)} /></label>
+              <label><span className="field-label">Home city</span><input placeholder="e.g. Dubai" value={profileHome} onChange={(event) => setProfileHome(event.target.value)} /></label>
+              <label className="profile-field-wide"><span className="field-label">About you</span><textarea rows="3" maxLength="140" placeholder="Travel style, favourite food, or anything your friends should know" value={profileBio} onChange={(event) => setProfileBio(event.target.value)} /></label>
+              <label className="profile-field-wide"><span className="field-label">Preferred currency</span><select value={profileCurrency} onChange={(event) => setProfileCurrency(event.target.value)}>{CURRENCY_OPTIONS.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
+            </div>
+            <button type="button" className="save-profile-button" onClick={saveProfile}>Save profile</button>
+            <p className="profile-privacy-note">{account.user ? "Saved privately to your Wayfare account and available on your other devices." : "Guest profiles stay on this device. Create an account above whenever you want cloud sync."}</p>
           </div>
         </section>}
       </div>
@@ -290,7 +429,7 @@ export default function Home() {
       {actionNotice && <div className="action-notice" role="status">{actionNotice}</div>}
 
       <nav className="mobile-bottom-nav home-bottom-nav" aria-label="Main navigation">
-        {NAV_ITEMS.map((item) => <button key={item.id} className={`bottom-nav-item ${activeView === item.id ? "active" : ""}`} onClick={() => setActiveView(item.id)}><span>{item.icon}</span><small>{item.label}</small></button>)}
+        {NAV_ITEMS.map((item) => <button key={item.id} className={`bottom-nav-item ${activeView === item.id ? "active" : ""}`} onClick={() => navigateView(item.id)}><NavIcon name={item.icon} /><small>{item.label}</small></button>)}
       </nav>
     </main>
   );
