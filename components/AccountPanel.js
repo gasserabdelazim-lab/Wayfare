@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function AccountPanel({ account, displayName }) {
+export default function AccountPanel({ account, displayName, redirectTo }) {
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +32,12 @@ export default function AccountPanel({ account, displayName }) {
 
   return (
     <div className="account-card">
-      <div className="account-card-head"><div><span className="eyebrow">Wayfare account</span><h3>Keep your profile on every device</h3><p>Guest mode still works. Sign in when you want cloud sync.</p></div></div>
+      <div className="account-card-head"><div><span className="eyebrow">Private Wayfare account</span><h3>Sign in to continue</h3><p>Your plans and expenses are only available to authenticated group members.</p></div></div>
+      <button type="button" className="google-signin-button" onClick={() => account.signInWithGoogle(redirectTo)}>
+        <span className="google-mark" aria-hidden="true">G</span>
+        Continue with Google
+      </button>
+      <div className="account-divider"><span>or use email</span></div>
       <div className="account-tabs">
         <button type="button" className={mode === "signin" ? "active" : ""} onClick={() => setMode("signin")}>Sign in</button>
         <button type="button" className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>Create account</button>
@@ -43,6 +48,7 @@ export default function AccountPanel({ account, displayName }) {
         <button type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}</button>
       </form>
       {account.message && <div className={`account-message ${account.message.type}`}>{account.message.text}</div>}
+      <p className="account-security-note">Wayfare never receives your Google password.</p>
     </div>
   );
 }

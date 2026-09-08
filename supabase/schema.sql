@@ -104,10 +104,8 @@ create table if not exists settlements (
 create index if not exists expense_splits_expense_id_idx on expense_splits(expense_id);
 create index if not exists settlements_trip_id_idx on settlements(trip_id);
 
--- Open access via shareable link, no login required.
--- Anyone with a trip's id can read/write that trip's data.
--- This trades off security for zero-friction sharing, which is the point of the product —
--- trip ids are random UUIDs, so this is "unlisted", not "public": someone would need the exact link.
+-- RLS is deny-by-default here. Apply the migrations in chronological order to
+-- add authenticated profiles, private membership policies, and invite links.
 alter table trips enable row level security;
 alter table travelers enable row level security;
 alter table activities enable row level security;
@@ -116,12 +114,3 @@ alter table comments enable row level security;
 alter table extra_costs enable row level security;
 alter table expense_splits enable row level security;
 alter table settlements enable row level security;
-
-create policy "public read/write trips" on trips for all using (true) with check (true);
-create policy "public read/write travelers" on travelers for all using (true) with check (true);
-create policy "public read/write activities" on activities for all using (true) with check (true);
-create policy "public read/write votes" on votes for all using (true) with check (true);
-create policy "public read/write comments" on comments for all using (true) with check (true);
-create policy "public read/write extra_costs" on extra_costs for all using (true) with check (true);
-create policy "public read/write expense_splits" on expense_splits for all using (true) with check (true);
-create policy "public read/write settlements" on settlements for all using (true) with check (true);

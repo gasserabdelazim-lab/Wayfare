@@ -1,15 +1,11 @@
 # Wayfare — setup
 
-## Upgrading an existing Wayfare database
+## Private accounts and secure trip membership
 
-This version adds a shared trip currency. If your Supabase project already uses
-the original schema, run this once in **Supabase → SQL Editor** before deploying:
-
-```sql
-alter table trips add column if not exists currency text not null default 'EUR';
-```
-
-New projects can run the complete `supabase/schema.sql` file as usual.
+Wayfare requires each person to sign in. Trips, activities, votes, comments,
+expenses, and settlements are protected by Supabase Row Level Security and are
+only readable by authenticated trip members. Owners invite friends with an
+expiring tokenized link; knowing a trip UUID alone does not grant access.
 
 Everything here is real, working code. These are the few things only you can do
 (account creation), each takes a couple of minutes.
@@ -19,11 +15,25 @@ Everything here is real, working code. These are the few things only you can do
 1. Go to supabase.com, sign up, click "New project".
 2. Once it's created, open the **SQL Editor** (left sidebar) → New query.
 3. Paste the entire contents of `supabase/schema.sql` and click Run.
-4. Go to **Project Settings → API**. You'll need two values from here in step 3 below:
+4. Apply every file in `supabase/migrations` in filename order. Existing
+   installations only need migrations they have not applied yet.
+5. Go to **Project Settings → API**. You'll need two values from here in step 3 below:
    - **Project URL**
    - **anon public** key
 
-## 2. Push this code to GitHub
+## 2. Authentication — email and Google
+
+Email/password authentication works through Supabase Auth. To enable Google:
+
+1. Create a Web OAuth client in Google Cloud.
+2. Set its authorized redirect URI to your Supabase Auth callback URL:
+   `https://<project-ref>.supabase.co/auth/v1/callback`
+3. In **Supabase → Authentication → Providers → Google**, enable Google and
+   enter the client ID and client secret.
+4. In **Supabase → Authentication → URL Configuration**, set the production
+   Site URL and allow the production and local development redirect URLs.
+
+## 3. Push this code to GitHub
 
 1. Create a new repo on github.com (can be private).
 2. From this folder:
@@ -35,7 +45,7 @@ Everything here is real, working code. These are the few things only you can do
    git push -u origin main
    ```
 
-## 3. Deploy — Vercel (free)
+## 4. Deploy — Vercel (free)
 
 1. Go to vercel.com, sign up with your GitHub account.
 2. Click "New Project", import the repo you just pushed.
@@ -46,9 +56,9 @@ Everything here is real, working code. These are the few things only you can do
 
 ## That's it
 
-Open the URL, create a trip, share the link with your family. Everyone who
-opens it types their name once, then votes/adds costs/adds activities —
-it all syncs live across everyone's phones.
+Open the URL and sign in, then create a trip. Invite friends with the secure
+link; each friend signs in with their own account before joining. Activities,
+votes, costs, and settlements sync live across the group’s phones.
 
 ## Optional — custom domain
 

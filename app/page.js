@@ -138,16 +138,6 @@ export default function Home() {
     setProfileBio(savedBio);
     setProfileCurrency(CURRENCY_OPTIONS.includes(savedCurrency) ? savedCurrency : "EUR");
     setGroupCurrency(CURRENCY_OPTIONS.includes(savedCurrency) ? savedCurrency : "EUR");
-    const tripIds = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i) || "";
-      if (key.startsWith("wayfare_name_")) tripIds.push(key.replace("wayfare_name_", ""));
-    }
-    if (!tripIds.length) return;
-    supabase.from("trips").select("id,name,start_date,end_date,created_at,currency,duration_days").in("id", tripIds)
-      .then(({ data }) => setTrips((data || []).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))));
-    supabase.from("activities").select("id,trip_id,name,created_at").in("trip_id", tripIds).order("created_at", { ascending: false }).limit(20)
-      .then(({ data }) => setRecentActivities(data || []));
   }, []);
 
   useEffect(() => {
@@ -172,24 +162,45 @@ export default function Home() {
   }, [account.profile]);
 
   useEffect(() => {
-    if (!account.user) return;
-    supabase.from("travelers").select("trip_id").eq("user_id", account.user.id).then(async ({ data }) => {
+    if (account.loading) return;
+    if (!account.user) {
+      setTrips([]);
+      setRecentActivities([]);
+      return;
+    }
+    let cancelled = false;
+    async function loadAccountTrips() {
+      const legacyTrips = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i) || "";
+        if (key.startsWith("wayfare_name_")) legacyTrips.push({ id: key.replace("wayfare_name_", ""), name: localStorage.getItem(key) || "" });
+      }
+      await Promise.allSettled(legacyTrips.map((legacy) => supabase.rpc("claim_legacy_trip", { target_trip: legacy.id, member_name: legacy.name })));
+      const { data } = await supabase.from("travelers").select("trip_id").eq("user_id", account.user.id);
       const accountTripIds = [...new Set((data || []).map((item) => item.trip_id).filter(Boolean))];
-      if (!accountTripIds.length) return;
+      if (!accountTripIds.length) {
+        if (!cancelled) {
+          setTrips([]);
+          setRecentActivities([]);
+        }
+        return;
+      }
       const { data: accountTrips } = await supabase.from("trips").select("id,name,start_date,end_date,created_at,currency,duration_days").in("id", accountTripIds);
-      setTrips((current) => {
-        const merged = new Map(current.map((trip) => [trip.id, trip]));
-        (accountTrips || []).forEach((trip) => merged.set(trip.id, trip));
-        return [...merged.values()].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-      });
+      if (cancelled) return;
+      setTrips((accountTrips || []).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))));
       const { data: accountActivities } = await supabase.from("activities").select("id,trip_id,name,created_at").in("trip_id", accountTripIds).order("created_at", { ascending: false }).limit(20);
-      setRecentActivities((current) => {
-        const merged = new Map(current.map((activity) => [activity.id, activity]));
-        (accountActivities || []).forEach((activity) => merged.set(activity.id, activity));
-        return [...merged.values()].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
-      });
-    });
-  }, [account.user]);
+      if (!cancelled) setRecentActivities(accountActivities || []);
+    }
+    loadAccountTrips();
+    return () => { cancelled = true; };
+  }, [account.loading, account.user?.id]);
+
+  useEffect(() => {
+    if (!account.user || account.profile || yourName.trim()) return;
+    const metadata = account.user.user_metadata || {};
+    setYourName(metadata.full_name || metadata.name || account.user.email?.split("@")[0] || "");
+    if (!profileAvatar) setProfileAvatar(metadata.avatar_url || metadata.picture || "");
+  }, [account.user, account.profile, yourName, profileAvatar]);
 
   const tripById = useMemo(() => Object.fromEntries(trips.map((trip) => [trip.id, trip])), [trips]);
   const planTrips = useMemo(() => trips.filter((trip) => !isExpenseGroup(trip)), [trips]);
@@ -231,6 +242,10 @@ export default function Home() {
   }
 
   async function createTrip() {
+    if (!account.user) {
+      setError("Sign in before creating a private trip.");
+      return;
+    }
     if (!tripName.trim() || !yourName.trim()) {
       setError("Add a trip title and your name first.");
       return;
@@ -293,6 +308,10 @@ export default function Home() {
   }
 
   async function createExpenseGroup() {
+    if (!account.user) {
+      setSettleError("Sign in before creating a private expense group.");
+      return;
+    }
     if (!groupName.trim() || !yourName.trim()) {
       setSettleError("Add a group name and your name first.");
       return;
@@ -321,6 +340,21 @@ export default function Home() {
     router.push(`/trip/${group.id}?view=settle`);
   }
 
+  if (account.loading) return <main className="auth-shell"><div className="auth-loading"><div className="brand-mark dark">WAYFARE</div><p>Checking your secure session…</p></div></main>;
+
+  if (!account.user) return (
+    <main className="auth-shell">
+      <section className="auth-welcome">
+        <div className="brand-mark dark">WAYFARE</div>
+        <span className="eyebrow">Private group travel</span>
+        <h1>Your plans belong to your group.</h1>
+        <p>Sign in to create trips, invite friends, vote on activities, and settle expenses securely.</p>
+        <div className="auth-benefits"><span>✓ Member-only trips</span><span>✓ Private expenses</span><span>✓ Synced profile</span></div>
+        <AccountPanel account={account} displayName={yourName} redirectTo={typeof window === "undefined" ? undefined : window.location.href} />
+      </section>
+    </main>
+  );
+
   return (
     <main className="mobile-app-home">
       <header className="app-header">
@@ -329,6 +363,7 @@ export default function Home() {
       </header>
 
       <div className="app-content">
+        {activeView !== "plans" && <button type="button" className="home-view-back" onClick={() => navigateView("plans")}><span aria-hidden="true">←</span> Back to plans</button>}
         {activeView === "plans" && (
           <section className="plans-home-view">
             <div className="app-welcome"><div className="eyebrow">Your trips</div><h1>Plans</h1><p>Create a trip, add suggestions, and let everyone vote.</p></div>
@@ -401,7 +436,7 @@ export default function Home() {
           <div className="profile-hero-card">
             <AvatarPreview name={yourName} avatar={profileAvatar} className="large-profile-bubble" />
             <div><h2>{yourName.trim() || "Your name"}</h2><p>{profileHome.trim() || "Add your home city"}</p></div>
-            <span className="profile-device-badge">{account.user ? "Synced account" : "Guest on this device"}</span>
+            <span className="profile-device-badge">Private account</span>
           </div>
           <div className="profile-stats" aria-label="Your Wayfare activity">
             <div><strong>{planTrips.length}</strong><span>Trips</span></div>
@@ -420,7 +455,7 @@ export default function Home() {
               <label className="profile-field-wide"><span className="field-label">Preferred currency</span><select value={profileCurrency} onChange={(event) => setProfileCurrency(event.target.value)}>{CURRENCY_OPTIONS.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
             </div>
             <button type="button" className="save-profile-button" onClick={saveProfile}>Save profile</button>
-            <p className="profile-privacy-note">{account.user ? "Saved privately to your Wayfare account and available on your other devices." : "Guest profiles stay on this device. Create an account above whenever you want cloud sync."}</p>
+            <p className="profile-privacy-note">Saved privately to your Wayfare account and available on your other devices.</p>
           </div>
         </section>}
       </div>

@@ -447,9 +447,14 @@ export default function TripPage() {
   const [memberSaving, setMemberSaving] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [removingMember, setRemovingMember] = useState(false);
+  const [accessState, setAccessState] = useState("loading");
+  const [accessError, setAccessError] = useState("");
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
   const itemRefs = useRef({});
   const addFormRef = useRef(null);
   const destinationPhotos = useDestinationPhotos(displayGroupName(trip?.name));
+  const inviteToken = searchParams.get("invite");
 
   useEffect(() => {
     if (isExpenseGroupName(trip?.name) && activeTab === "plan") switchTab("settle");
@@ -481,13 +486,22 @@ export default function TripPage() {
   }, [destinationPhotos]);
 
   const load = useCallback(async () => {
-    const { data: tripData } = await supabase.from("trips").select("*").eq("id", tripId).single();
+    const { data: tripData, error: tripError } = await supabase.from("trips").select("*").eq("id", tripId).maybeSingle();
+    if (tripError || !tripData) {
+      setTrip(null);
+      return false;
+    }
     setTrip(tripData);
     setTripDateDraft({ start: tripData?.start_date || "", end: tripData?.end_date || "" });
     if (tripData?.currency && CURRENCIES[tripData.currency]) setCurrency(tripData.currency);
 
     const { data: travelerData } = await supabase.from("travelers").select("*").eq("trip_id", tripId);
     setTravelers(travelerData || []);
+    const linkedTraveler = (travelerData || []).find((traveler) => traveler.user_id === account.user?.id);
+    if (linkedTraveler) {
+      setMe(linkedTraveler.name);
+      localStorage.setItem(`wayfare_name_${tripId}`, linkedTraveler.name);
+    }
 
     const { data: activityData } = await supabase
       .from("activities").select("*").eq("trip_id", tripId).order("sort_order");
@@ -539,10 +553,10 @@ export default function TripPage() {
         ? current.participantIds.filter((id) => (travelerData || []).some((traveler) => traveler.id === id))
         : (travelerData || []).map((traveler) => traveler.id),
     }));
-  }, [tripId]);
+    return true;
+  }, [tripId, account.user?.id]);
 
   useEffect(() => {
-    load();
     const savedName = localStorage.getItem(`wayfare_name_${tripId}`);
     if (savedName) setMe(savedName);
     const savedCurrency = localStorage.getItem(`wayfare_currency_${tripId}`);
@@ -554,13 +568,58 @@ export default function TripPage() {
       bio: localStorage.getItem("wayfare_profile_bio") || "",
       currency: CURRENCIES[preferredCurrency] ? preferredCurrency : "EUR",
     });
+  }, [tripId]);
 
+  useEffect(() => {
+    if (account.loading) return;
+    if (!account.user) {
+      setAccessState("signin");
+      setTrip(null);
+      return;
+    }
+    let cancelled = false;
+    async function openPrivateTrip() {
+      setAccessState("loading");
+      setAccessError("");
+      const metadata = account.user.user_metadata || {};
+      const memberName = account.profile?.display_name || metadata.full_name || metadata.name || localStorage.getItem("wayfare_profile_name") || account.user.email?.split("@")[0] || "Traveler";
+      const memberAvatar = account.profile?.avatar || metadata.avatar_url || metadata.picture || localStorage.getItem("wayfare_profile_avatar") || null;
+
+      if (inviteToken) {
+        const { error } = await supabase.rpc("accept_trip_invite", { invite_token: inviteToken, member_name: memberName, member_avatar: memberAvatar });
+        if (error) {
+          if (!cancelled) {
+            setAccessError(error.message || "This invitation is invalid or has expired.");
+            setAccessState("denied");
+          }
+          return;
+        }
+      } else {
+        const legacyName = localStorage.getItem(`wayfare_name_${tripId}`);
+        if (legacyName) await supabase.rpc("claim_legacy_trip", { target_trip: tripId, member_name: legacyName });
+      }
+
+      const allowed = await load();
+      if (cancelled) return;
+      setAccessState(allowed ? "allowed" : "denied");
+      if (!allowed) setAccessError("This plan is private. Ask the owner for a new invite link.");
+      if (allowed && inviteToken) {
+        const requestedView = searchParams.get("view");
+        router.replace(`/trip/${tripId}${requestedView ? `?view=${requestedView}` : ""}`, { scroll: false });
+      }
+    }
+    openPrivateTrip();
+    return () => { cancelled = true; };
+  }, [account.loading, account.user?.id, account.profile?.display_name, account.profile?.avatar, tripId, inviteToken, load]);
+
+  useEffect(() => {
+    if (accessState !== "allowed") return;
     const channel = supabase
       .channel(`trip-${tripId}`)
       .on("postgres_changes", { event: "*", schema: "public" }, () => load())
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [tripId, load]);
+  }, [tripId, load, accessState]);
 
   useEffect(() => {
     if (justAddedId && itemRefs.current[justAddedId]) {
@@ -569,21 +628,6 @@ export default function TripPage() {
       return () => clearTimeout(t);
     }
   }, [justAddedId, activities]);
-
-  async function joinAsTraveler(chosenName) {
-    const finalName = (chosenName ?? nameInput).trim();
-    if (!finalName) return;
-    const existing = (account.user && travelers.find((t) => t.user_id === account.user.id)) || travelers.find((t) => t.name.toLowerCase() === finalName.toLowerCase());
-    if (!existing) {
-      const savedAvatar = localStorage.getItem("wayfare_profile_avatar") || null;
-      await supabase.from("travelers").insert({ trip_id: tripId, name: finalName, avatar: savedAvatar, user_id: account.user?.id || null, role: "member" });
-    } else if (account.user && !existing.user_id) {
-      await supabase.from("travelers").update({ user_id: account.user.id }).eq("id", existing.id);
-    }
-    localStorage.setItem(`wayfare_name_${tripId}`, finalName);
-    setMe(finalName);
-    load();
-  }
 
   function myTraveler() {
     return (account.user && travelers.find((t) => t.user_id === account.user.id)) || travelers.find((t) => t.name.toLowerCase() === (me || "").toLowerCase());
@@ -681,17 +725,41 @@ export default function TripPage() {
     await load();
   }
 
+  async function ensureInviteLink() {
+    if (inviteUrl) return inviteUrl;
+    const manager = myTraveler();
+    const canManage = manager?.role === "owner" || trip?.created_by === account.user?.id;
+    if (!canManage) return "";
+    setInviteLoading(true);
+    const { data, error } = await supabase.rpc("create_or_get_trip_invite", { target_trip: tripId });
+    setInviteLoading(false);
+    if (error || !data) {
+      showNotice(`Couldn't create a private invite: ${error?.message || "try again."}`, "error");
+      return "";
+    }
+    const nextUrl = `${window.location.origin}/trip/${tripId}?invite=${data}`;
+    setInviteUrl(nextUrl);
+    return nextUrl;
+  }
+
+  async function openSharePanel() {
+    setShareOpen(true);
+    await ensureInviteLink();
+  }
+
   async function copyInviteLink() {
-    const inviteUrl = `${window.location.origin}/trip/${tripId}`;
-    await navigator.clipboard.writeText(inviteUrl);
+    const secureInviteUrl = await ensureInviteLink();
+    if (!secureInviteUrl) return;
+    await navigator.clipboard.writeText(secureInviteUrl);
     showNotice("Invite link copied — send it to your group.");
   }
 
   async function shareInviteLink() {
-    const inviteUrl = `${window.location.origin}/trip/${tripId}`;
+    const secureInviteUrl = await ensureInviteLink();
+    if (!secureInviteUrl) return;
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${tripDisplayName} on Wayfare`, text: `Join my ${expenseOnly ? "expense group" : "trip plan"} on Wayfare.`, url: inviteUrl });
+        await navigator.share({ title: `${tripDisplayName} on Wayfare`, text: `Sign in to join my private ${expenseOnly ? "expense group" : "trip plan"} on Wayfare.`, url: secureInviteUrl });
         return;
       } catch (error) {
         if (error?.name === "AbortError") return;
@@ -1117,31 +1185,15 @@ export default function TripPage() {
     return feed.sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 30);
   }, [activities, votesByActivity, commentsByActivity, extraCosts, settlements, travelers, currency]);
 
-  if (!trip) return <div className="wrap"><div className="loading-state">Loading your trip…</div></div>;
+  if (account.loading || accessState === "loading") return <main className="auth-shell"><div className="auth-loading"><div className="brand-mark dark">WAYFARE</div><p>Opening your private plan…</p></div></main>;
 
-  if (!me) {
+  if (!account.user) {
     return (
-      <div className="wrap name-gate">
-        <div className="eyebrow">{tripDisplayName}</div>
-        <h1 style={{ fontSize: 26, marginTop: 10 }}>What's your name?</h1>
-        <p style={{ opacity: 0.6, fontSize: 13, marginTop: 6 }}>So the group knows whose votes are whose.</p>
-        <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Your name" onKeyDown={(e) => e.key === "Enter" && joinAsTraveler()} autoFocus />
-        <button onClick={() => joinAsTraveler()}>{expenseOnly ? "Join expense group" : "Join trip"}</button>
-        {travelers.length > 0 && (
-          <div className="existing-travelers">
-            <div className="field-label" style={{ textAlign: "center" }}>Already on this trip</div>
-            <div className="traveler-chips">
-              {travelers.map((t) => (
-                <button key={t.id} className="traveler-chip" onClick={() => joinAsTraveler(t.name)}>
-                  <Avatar name={t.name} avatar={t.avatar} size={20} /> {t.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <main className="auth-shell"><section className="auth-welcome invite-auth-welcome"><button type="button" className="auth-back-button" onClick={() => router.push("/")}>← Back</button><div className="brand-mark dark">WAYFARE</div><span className="eyebrow">Private invitation</span><h1>{inviteToken ? "A friend invited you to plan together." : "Sign in to open this plan."}</h1><p>Only authenticated members can see activities, votes, and shared expenses.</p><AccountPanel account={account} displayName={nameInput} redirectTo={typeof window === "undefined" ? undefined : window.location.href} /></section></main>
     );
   }
+
+  if (accessState === "denied" || !trip) return <main className="auth-shell"><section className="auth-welcome access-denied-card"><button type="button" className="auth-back-button" onClick={() => router.push("/")}>← Back to plans</button><div className="brand-mark dark">WAYFARE</div><span className="eyebrow">Private plan</span><h1>You don’t have access.</h1><p>{accessError || "Ask the owner to send you a secure invite link."}</p></section></main>;
 
   const currentTraveler = myTraveler();
   const canManageMembers = currentTraveler?.role === "owner" || trip?.created_by === account.user?.id || travelers.length === 1;
@@ -1151,7 +1203,7 @@ export default function TripPage() {
   return (
     <div className="trip-shell">
       <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
-        <div className="hero-nav"><a className="all-plans-back hero-back" href={expenseOnly ? "/?view=settle" : "/"}>← {expenseOnly ? "All groups" : "All plans"}</a><span className="trip-wordmark">WAYFARE</span><button className="share-btn" onClick={() => setShareOpen(true)}><Icon name="arrow" style={{ width: 14, height: 14 }} />Invite friends</button></div>
+        <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><span className="trip-wordmark">WAYFARE</span><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
         <div className="hero-content">
           <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>
           <h1>{tripDisplayName}</h1>
@@ -1190,7 +1242,7 @@ export default function TripPage() {
           <label className="field-label">Trip duration</label>
           <div className="profile-duration-control"><input key={tripDays} aria-label="Trip duration in days" type="number" min="1" max="30" defaultValue={tripDays} onBlur={(event) => updateTripDuration(event.target.value)} /><span>days · creates Day 1 to Day {tripDays}</span></div>
           <div className="profile-members"><div className="field-label">Travelers</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
-          <button type="button" className="manage-members-button" onClick={() => setShareOpen(true)}>Invite or manage travelers</button>
+          <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage travelers" : "View travelers"}</button>
         </div>
       </details>}
 
@@ -1209,7 +1261,7 @@ export default function TripPage() {
               {travelers.length} traveler{travelers.length === 1 ? "" : "s"} · you're {me}
             </div>
           </div>
-          <button className="share-btn" onClick={() => setShareOpen(true)}>
+          <button className="share-btn" onClick={openSharePanel}>
             <Icon name="pin" style={{ width: 14, height: 14 }} />Share
           </button>
         </div>
@@ -1432,7 +1484,7 @@ export default function TripPage() {
           <label className="field-label">Group currency</label>
           <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => { const next = event.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
           <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
-          <button type="button" className="manage-members-button" onClick={() => setShareOpen(true)}>Invite or manage members</button>
+          <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage members" : "View members"}</button>
         </div>
       </details>}
       <div className="sec-head"><h2>Settle up</h2></div>
@@ -1479,7 +1531,7 @@ export default function TripPage() {
           <div className="profile-hero-card">
             <Avatar name={profileDraft.name || me} avatar={myTraveler()?.avatar} size={76} />
             <div><h2>{profileDraft.name || me}</h2><p>{profileDraft.home || "Add your home city"}</p></div>
-            <span className="profile-device-badge">{account.user ? "Synced account" : "Guest profile"}</span>
+            <span className="profile-device-badge">Private account</span>
           </div>
           <AccountPanel account={account} displayName={profileDraft.name || me} />
           <div className="profile-card trip-profile-card profile-editor-card">
@@ -1494,12 +1546,12 @@ export default function TripPage() {
               <label className="profile-field-wide"><span className="field-label">Preferred app currency</span><select value={profileDraft.currency} onChange={(event) => setProfileDraft((current) => ({ ...current, currency: event.target.value }))}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select></label>
             </div>
             <button type="button" className="save-profile-button" onClick={savePersonalProfile}>Save personal profile</button>
-            <p className="profile-privacy-note">{account.user ? "Saved privately to your Wayfare account and synced across your devices." : "Saved on this device. Create an account above to use your profile on another phone."}</p>
+            <p className="profile-privacy-note">Saved privately to your Wayfare account and synced across your devices.</p>
           </div>
         </div>
       </section>
 
-      <div className="footnote">Wayfare — guests can join with the link, while signed-in members keep their profile across devices.</div>
+      <div className="footnote">Wayfare — private plans for authenticated group members.</div>
 
       {actionNotice && <div className={`action-notice ${actionNotice.type === "error" ? "notice-error" : ""}`} role="status">{actionNotice.text}</div>}
       {deleteTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deleting && setDeleteTarget(null)}>
@@ -1513,9 +1565,8 @@ export default function TripPage() {
       {shareOpen && <div className="confirm-backdrop" role="presentation" onClick={() => setShareOpen(false)}>
         <div className="confirm-sheet invite-sheet" role="dialog" aria-modal="true" aria-labelledby="invite-title" onClick={(event) => event.stopPropagation()}>
           <div className="invite-sheet-head"><div><span className="eyebrow">Plan together</span><h3 id="invite-title">Invite friends</h3></div><button type="button" aria-label="Close invite panel" onClick={() => setShareOpen(false)}>×</button></div>
-          <p>Anyone with this private link can join {tripDisplayName}, vote, and add shared expenses.</p>
-          <div className="invite-link-row"><input aria-label="Invite link" readOnly value={typeof window === "undefined" ? `/trip/${tripId}` : `${window.location.origin}/trip/${tripId}`} /><button type="button" onClick={copyInviteLink}>Copy</button></div>
-          <button type="button" className="share-primary-button" onClick={shareInviteLink}>Share invite</button>
+          <p>{canManageMembers ? `Friends must sign in with their own account before they can join ${tripDisplayName}. This link expires after 30 days.` : `Only the owner can create an invite. These are the authenticated members of ${tripDisplayName}.`}</p>
+          {canManageMembers && <><div className="invite-link-row"><input aria-label="Invite link" readOnly value={inviteLoading ? "Creating secure invite…" : inviteUrl} placeholder="Creating secure invite…" /><button type="button" onClick={copyInviteLink} disabled={inviteLoading || !inviteUrl}>Copy</button></div><button type="button" className="share-primary-button" onClick={shareInviteLink} disabled={inviteLoading || !inviteUrl}>Share secure invite</button></>}
           <div className="member-manager">
             <div className="member-manager-head"><strong>{expenseOnly ? "Group members" : "Travelers"}</strong><small>{travelers.length} joined</small></div>
             {travelers.map((traveler) => <div className="member-manager-row" key={traveler.id}><span><Avatar name={traveler.name} avatar={traveler.avatar} size={30} /><b>{traveler.name}</b>{traveler.role === "owner" && <small>Owner</small>}</span>{canManageMembers && traveler.id !== currentTraveler?.id && traveler.role !== "owner" && <button type="button" onClick={() => setMemberToRemove(traveler)}>Remove</button>}</div>)}

@@ -884,3 +884,35 @@ body { background: #e9ece8; }
   .expense-ledger-row .ledger-sub { max-width: 240px; }
   .transfer-row .mark-paid-button { flex-basis: 100%; margin: 3px 0 0 32px; }
 }
+
+/* ---------- Private accounts and explicit navigation ---------- */
+.auth-shell { min-height: 100svh; display: grid; place-items: center; padding: 28px 18px; background: radial-gradient(circle at 82% 8%, rgba(207,164,73,.17), transparent 28%), linear-gradient(155deg, #f8f7f3 0%, #edf5f1 100%); color: var(--ink); }
+.auth-welcome { width: min(520px, 100%); }
+.auth-welcome > .brand-mark { margin-bottom: 42px; font-size: 27px; letter-spacing: .16em; }
+.auth-welcome > h1 { max-width: 470px; margin: 9px 0 12px; font-family: 'Fraunces', Georgia, serif; font-size: clamp(38px, 9vw, 56px); line-height: .98; letter-spacing: -.035em; }
+.auth-welcome > p { max-width: 450px; margin: 0 0 18px; color: rgba(14,38,34,.62); font-size: 14px; line-height: 1.65; }
+.auth-welcome .account-card { margin-top: 24px; padding: 22px; }
+.auth-benefits { display: flex; flex-wrap: wrap; gap: 7px; margin: 18px 0 8px; }
+.auth-benefits span { border: 1px solid rgba(31,111,99,.18); border-radius: 999px; padding: 7px 10px; background: rgba(255,255,255,.7); color: var(--teal); font-size: 10px; font-weight: 750; }
+.auth-loading { text-align: center; }
+.auth-loading .brand-mark { margin-bottom: 12px; font-size: 27px; letter-spacing: .16em; }
+.auth-loading p { opacity: .55; font-size: 12px; }
+.invite-auth-welcome > .brand-mark, .access-denied-card > .brand-mark { margin: 28px 0 36px; }
+.auth-back-button, .home-view-back { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(31,111,99,.22); border-radius: 999px; background: rgba(255,255,255,.8); color: var(--teal-deep); font-size: 11px; font-weight: 750; cursor: pointer; }
+.auth-back-button { min-height: 40px; padding: 0 14px; }
+.home-view-back { min-height: 38px; margin: 0 0 18px; padding: 0 13px; box-shadow: 0 6px 18px rgba(18,63,56,.06); }
+.google-signin-button { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 17px; border: 1px solid #d4d8d4; border-radius: 11px; background: #fff; color: #1f2f2c; font-size: 12px; font-weight: 750; cursor: pointer; box-shadow: 0 5px 15px rgba(18,63,56,.06); }
+.google-signin-button:hover { border-color: #9bb8ae; background: #fbfdfc; }
+.google-mark { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: #4285f4; font: 800 16px Arial, sans-serif; }
+.account-divider { display: flex; align-items: center; gap: 10px; margin: 15px 0 6px; color: rgba(14,38,34,.4); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.account-divider::before, .account-divider::after { content: ''; flex: 1; height: 1px; background: rgba(14,38,34,.11); }
+.account-security-note { margin-top: 12px !important; text-align: center; }
+.hero-back { min-height: 38px; display: inline-flex; align-items: center; gap: 5px; border-style: solid; border-width: 1px; border-radius: 999px; font: 700 10px 'Inter', sans-serif; cursor: pointer; }
+.access-denied-card { text-align: left; }
+
+@media (max-width: 560px) {
+  .account-form { grid-template-columns: 1fr; }
+  .account-form > button { width: 100%; }
+  .auth-welcome .account-card { padding: 18px; }
+  .hero-back { padding: 8px 10px; }
+}
