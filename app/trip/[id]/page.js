@@ -1,11 +1,17 @@
 "use client";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { supabase } from "../../../lib/supabaseClient";
 import NavIcon from "../../../components/NavIcon";
 import AccountPanel from "../../../components/AccountPanel";
 import { destinationInfo, findDestinationPhotos } from "../../../lib/destinations";
 import { useWayfareAccount } from "../../../lib/useWayfareAccount";
+
+const TripMap = dynamic(() => import("../../../components/TripMap"), {
+  ssr: false,
+  loading: () => <div className="map-loading-card">Preparing your trip map…</div>,
+});
 
 const icons = {
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3"/></svg>',
@@ -123,7 +129,7 @@ function suggestedLocations(query, tripName) {
 
 function formatPlaceResult(feature) {
   const place = feature?.properties || {};
-  return [...new Set([
+  const label = [...new Set([
     place.name,
     place.street,
     place.district,
@@ -131,6 +137,23 @@ function formatPlaceResult(feature) {
     place.state,
     place.country,
   ].filter(Boolean))].join(", ");
+  const [longitude, latitude] = feature?.geometry?.coordinates || [];
+  if (!label) return null;
+  return {
+    label,
+    latitude: Number.isFinite(Number(latitude)) ? Number(latitude) : null,
+    longitude: Number.isFinite(Number(longitude)) ? Number(longitude) : null,
+  };
+}
+
+async function geocodePlace(query, tripName, signal) {
+  const clean = String(query || "").trim();
+  if (!clean) return null;
+  const search = tripName && !clean.toLowerCase().includes(String(tripName).toLowerCase()) ? `${clean}, ${tripName}` : clean;
+  const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(search)}&limit=1&lang=en`, { signal });
+  if (!response.ok) return null;
+  const payload = await response.json();
+  return formatPlaceResult(payload.features?.[0]);
 }
 
 function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compact = false }) {
@@ -174,8 +197,10 @@ function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compa
     };
   }, [query, open, tripName]);
 
-  const fallbackResults = suggestedLocations(query, tripName);
-  const results = [...new Set([...remoteResults, ...fallbackResults])].filter((place) => place.toLowerCase() !== query.trim().toLowerCase()).slice(0, 6);
+  const fallbackResults = suggestedLocations(query, tripName).map((label) => ({ label, latitude: null, longitude: null }));
+  const results = [...remoteResults, ...fallbackResults]
+    .filter((place, index, items) => place.label.toLowerCase() !== query.trim().toLowerCase() && items.findIndex((candidate) => candidate.label === place.label) === index)
+    .slice(0, 6);
 
   function changeValue(next) {
     setQuery(next);
@@ -185,11 +210,12 @@ function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compa
   }
 
   function commitValue(next) {
-    const clean = next.trim();
+    const place = typeof next === "string" ? { label: next, latitude: null, longitude: null } : next;
+    const clean = String(place?.label || "").trim();
     setQuery(clean);
     queryRef.current = clean;
     onValueChange?.(clean);
-    onCommit?.(clean);
+    onCommit?.(clean, { latitude: place?.latitude ?? null, longitude: place?.longitude ?? null });
     setOpen(false);
   }
 
@@ -218,8 +244,8 @@ function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compa
         <div className="location-suggestions" role="listbox" aria-label="Location suggestions">
           {loading && <div className="location-loading">Finding exact places…</div>}
           {results.map((place) => (
-            <button type="button" key={place} onMouseDown={(event) => event.preventDefault()} onClick={() => commitValue(place)}>
-              {place}<small>Use this exact location · opens in Google Maps</small>
+            <button type="button" key={place.label} onMouseDown={(event) => event.preventDefault()} onClick={() => commitValue(place)}>
+              {place.label}<small>Use this exact location · add it to your trip map</small>
             </button>
           ))}
           {!loading && results.length === 0 && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => commitValue(query)}>Use “{query.trim()}”<small>Save the location as typed</small></button>}
@@ -421,7 +447,7 @@ export default function TripPage() {
   const [settlements, setSettlements] = useState([]);
   const [me, setMe] = useState(null);
   const [nameInput, setNameInput] = useState("");
-  const [newActivity, setNewActivity] = useState({ day_label: "Day 1", day_date: "", name: "", location: "", time_text: "", cost_pp: "", booking_info: "" });
+  const [newActivity, setNewActivity] = useState({ day_label: "Day 1", day_date: "", name: "", location: "", latitude: null, longitude: null, time_text: "", cost_pp: "", booking_info: "" });
   const [activityError, setActivityError] = useState("");
   const [activitySaving, setActivitySaving] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
@@ -442,6 +468,8 @@ export default function TripPage() {
   const [profileDraft, setProfileDraft] = useState({ name: "", home: "", bio: "", currency: "EUR" });
   const [justAddedId, setJustAddedId] = useState(null);
   const [heroPhotoIndex, setHeroPhotoIndex] = useState(0);
+  const [planView, setPlanView] = useState("timeline");
+  const [mapDay, setMapDay] = useState("All days");
   const [shareOpen, setShareOpen] = useState(false);
   const [memberName, setMemberName] = useState("");
   const [memberSaving, setMemberSaving] = useState(false);
@@ -453,6 +481,7 @@ export default function TripPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const itemRefs = useRef({});
   const addFormRef = useRef(null);
+  const geocodingRef = useRef(new Set());
   const destinationPhotos = useDestinationPhotos(displayGroupName(trip?.name));
   const inviteToken = searchParams.get("invite");
 
@@ -628,6 +657,33 @@ export default function TripPage() {
       return () => clearTimeout(t);
     }
   }, [justAddedId, activities]);
+
+  useEffect(() => {
+    if (accessState !== "allowed") return;
+    const pending = activities.filter((activity) => activity.location && (activity.latitude == null || activity.longitude == null) && !geocodingRef.current.has(activity.id)).slice(0, 6);
+    if (!pending.length) return;
+    const controller = new AbortController();
+    pending.forEach((activity) => geocodingRef.current.add(activity.id));
+    Promise.all(pending.map(async (activity) => {
+      try {
+        const place = await geocodePlace(activity.location, displayGroupName(trip?.name), controller.signal);
+        if (!place || place.latitude == null || place.longitude == null) return null;
+        return { id: activity.id, latitude: place.latitude, longitude: place.longitude };
+      } catch {
+        return null;
+      }
+    })).then((results) => {
+      if (controller.signal.aborted) return;
+      const mapped = results.filter(Boolean);
+      if (!mapped.length) return;
+      setActivities((current) => current.map((item) => {
+        const match = mapped.find((place) => place.id === item.id);
+        return match ? { ...item, latitude: match.latitude, longitude: match.longitude } : item;
+      }));
+      Promise.all(mapped.map((place) => supabase.from("activities").update({ latitude: place.latitude, longitude: place.longitude }).eq("id", place.id))).catch(() => {});
+    });
+    return () => controller.abort();
+  }, [activities, accessState, trip?.name]);
 
   function myTraveler() {
     return (account.user && travelers.find((t) => t.user_id === account.user.id)) || travelers.find((t) => t.name.toLowerCase() === (me || "").toLowerCase());
@@ -878,6 +934,8 @@ export default function TripPage() {
         day_date: newActivity.day_date || null,
         name: activityName,
         location: newActivity.location.trim() || null,
+        latitude: newActivity.latitude,
+        longitude: newActivity.longitude,
         time_text: newActivity.time_text.trim() || null,
         cost_pp: parsedCost > 0 ? parsedCost : 0,
         booking_info: newActivity.booking_info.trim() || null,
@@ -894,7 +952,7 @@ export default function TripPage() {
       setActivities((current) => [...current.filter((activity) => activity.id !== data.id), data]);
       setJustAddedId(data.id);
     }
-    setNewActivity({ ...newActivity, name: "", location: "", time_text: "", cost_pp: "", booking_info: "" });
+    setNewActivity({ ...newActivity, name: "", location: "", latitude: null, longitude: null, time_text: "", cost_pp: "", booking_info: "" });
     setAddOpen(false);
     showNotice(`${activityName} was added to ${tripDisplayName || "the plan"}.`);
     await load();
@@ -1272,6 +1330,32 @@ export default function TripPage() {
         </div>
       </div>
 
+      {activities.length > 0 && (
+        <section className="map-workspace" aria-label="Map and timeline planner">
+          <div className="map-workspace-head">
+            <div><span className="eyebrow">Plan visually</span><h3>Map & timeline</h3><p>See where each stop sits, then open the route in Google Maps.</p></div>
+            <div className="plan-view-toggle" role="group" aria-label="Itinerary view">
+              <button type="button" className={planView === "timeline" ? "active" : ""} onClick={() => setPlanView("timeline")}>Timeline</button>
+              <button type="button" className={planView === "map" ? "active" : ""} onClick={() => setPlanView("map")}><Icon name="pin" />Map</button>
+            </div>
+          </div>
+          {planView === "map" && <>
+            <div className="map-day-filter" aria-label="Filter map by day">
+              {["All days", ...dayOptions].map((day) => <button type="button" key={day} className={mapDay === day ? "active" : ""} onClick={() => setMapDay(day)}>{day}</button>)}
+            </div>
+            <TripMap
+              activities={activities}
+              selectedDay={mapDay}
+              statusFor={statusOf}
+              onActivitySelect={(activityId) => {
+                setPlanView("timeline");
+                setTimeout(() => itemRefs.current[activityId]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+              }}
+            />
+          </>}
+        </section>
+      )}
+
       {activities.length === 0 && (
         <div className="empty-state">
           <Icon name="sparkle" style={{ width: 22, height: 22, opacity: 0.5 }} />
@@ -1288,7 +1372,7 @@ export default function TripPage() {
         </div>
       )}
 
-      {grouped.map(([dayLabel, group]) => {
+      {planView === "timeline" && grouped.map(([dayLabel, group]) => {
         const items = group.items;
         const topId = topActivityIdPerDay[dayLabel];
         return (
@@ -1328,7 +1412,10 @@ export default function TripPage() {
                     </div>
                   </div>
                   <div className="item-meta activity-editors">
-                    <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={editableLocation} tripName={tripDisplayName} onCommit={(location) => updateActivity(a.id, { location: location || null })} /></div>
+                    <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={editableLocation} tripName={tripDisplayName} onCommit={(location, place) => {
+                      geocodingRef.current.delete(a.id);
+                      updateActivity(a.id, { location: location || null, latitude: place.latitude, longitude: place.longitude });
+                    }} /></div>
                     <label className="inline-field inline-cost-field"><Icon name="coin" /><span className="currency-prefix">{CURRENCIES[currency].symbol}</span><input key={`cost-${a.id}-${a.cost_pp || 0}`} aria-label="Cost per person" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={a.cost_pp || ""} placeholder="0" onFocus={(event) => event.currentTarget.select()} onBlur={(event) => { const value = parseFloat(event.target.value); updateActivity(a.id, { cost_pp: value > 0 ? value : 0 }); }} /><small>pp</small></label>
                     <label className="inline-field inline-time-field"><Icon name="clock" /><select aria-label="Activity time" value={editableTime} onChange={(event) => updateActivity(a.id, { time_text: event.target.value || null })}><option value="">Add time</option>{editableTime && !TIME_OPTIONS.includes(editableTime) && <option value={editableTime}>{editableTime}</option>}{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></label>
                     {a.cost_pp > 0 && (
@@ -1373,7 +1460,7 @@ export default function TripPage() {
         );
       })}
 
-      {activities.length > 0 && suggestionsToShow.length > 0 && (
+      {planView === "timeline" && activities.length > 0 && suggestionsToShow.length > 0 && (
         <div className="suggestion-block">
           <div className="field-label" style={{ marginBottom: 8 }}>Need ideas? Quick-add a suggestion</div>
           <div className="suggestion-row">
@@ -1400,7 +1487,12 @@ export default function TripPage() {
         </div>
         <label className="field-label">Location <span>optional</span></label>
         <div className="location-field-row">
-          <PlacePicker value={newActivity.location} tripName={tripDisplayName} onValueChange={(location) => setNewActivity((current) => ({ ...current, location }))} />
+          <PlacePicker
+            value={newActivity.location}
+            tripName={tripDisplayName}
+            onValueChange={(location) => setNewActivity((current) => ({ ...current, location, latitude: null, longitude: null }))}
+            onCommit={(location, place) => setNewActivity((current) => ({ ...current, location, latitude: place.latitude, longitude: place.longitude }))}
+          />
           <a className={`map-check ${newActivity.location.trim() ? "" : "disabled"}`} href={newActivity.location.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newActivity.location)}` : undefined} target="_blank" rel="noreferrer">Check Maps</a>
         </div>
         <label className="field-label">Booking link or confirmation <span>optional</span></label>
