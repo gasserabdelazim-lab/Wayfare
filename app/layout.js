@@ -1,5 +1,6 @@
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
+import "./social-design.css";
 
 export const metadata = {
   title: "Wayfare — plan together",

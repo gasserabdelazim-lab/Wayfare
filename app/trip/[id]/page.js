@@ -1,4 +1,5 @@
 "use client";
+import ActivityPolls from "../../../components/ActivityPolls";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -1349,13 +1350,14 @@ export default function TripPage() {
         </div>
       </div>
 
-      {activities.length > 0 && (
+      {!expenseOnly && (
         <section className="map-workspace" aria-label="Map and timeline planner">
           <div className="map-workspace-head">
-            <div><span className="eyebrow">Plan visually</span><h3>Map & timeline</h3><p>See where each stop sits, then open the route in Google Maps.</p></div>
+            <div><span className="eyebrow">Your trip, together</span><h3>The group plan</h3><p>Collect ideas, have your say, and see it all on the map.</p></div>
             <div className="plan-view-toggle" role="group" aria-label="Itinerary view">
               <button type="button" className={planView === "timeline" ? "active" : ""} onClick={() => setPlanView("timeline")}>Timeline</button>
               <button type="button" className={planView === "map" ? "active" : ""} onClick={() => setPlanView("map")}><Icon name="pin" />Map</button>
+              <button type="button" className={planView === "polls" ? "active" : ""} onClick={() => setPlanView("polls")}>Group votes</button>
             </div>
           </div>
           {planView === "map" && <>
@@ -1375,7 +1377,9 @@ export default function TripPage() {
         </section>
       )}
 
-      {activities.length === 0 && (
+      {planView === "polls" && <ActivityPolls activities={activities} votesByActivity={votesByActivity} travelers={travelers} travelerId={currentTraveler?.id} onVote={castVote} onAdd={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }} onView={(id) => { setPlanView("timeline"); setTimeout(() => itemRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100); }} />}
+
+      {activities.length === 0 && planView === "timeline" && (
         <div className="empty-state">
           <Icon name="sparkle" style={{ width: 22, height: 22, opacity: 0.5 }} />
           <div className="empty-title">No activities yet</div>

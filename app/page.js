@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import NavIcon from "../components/NavIcon";
@@ -68,7 +68,7 @@ function DestinationCover({ name }) {
     return () => controller.abort();
   }, [name]);
 
-  return <div className="trip-card-cover destination-cover-collage">{photos.slice(0, 3).map((photo, index) => <img key={photo} className={`cover-photo cover-photo-${index + 1}`} src={photo} alt="" />)}</div>;
+  return <div className="trip-card-cover destination-cover-collage"><img className="cover-photo cover-photo-1" src={photos[0]} alt="" loading="lazy" /></div>;
 }
 
 function dateFromInput(value) {
@@ -108,6 +108,13 @@ export default function Home() {
   const [yourName, setYourName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [tripSearch, setTripSearch] = useState("");
+  const createRef = useRef(null);
+  function openCreate() {
+    setCreateOpen(true);
+    requestAnimationFrame(() => createRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
   const [activeView, setActiveView] = useState("plans");
   const [trips, setTrips] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
@@ -366,20 +373,24 @@ export default function Home() {
         {activeView !== "plans" && <button type="button" className="home-view-back" onClick={() => navigateView("plans")}><span aria-hidden="true">←</span> Back to plans</button>}
         {activeView === "plans" && (
           <section className="plans-home-view">
-            <div className="app-welcome"><div className="eyebrow">Your trips</div><h1>Plans</h1><p>Create a trip, add suggestions, and let everyone vote.</p></div>
+            <div className="app-welcome journey-welcome"><div className="eyebrow">Hey {yourName.trim().split(/\s+/)[0] || "traveler"}, where next?</div><h1>Good trips.<br /><span>Great company.</span></h1><p>A little planning. A lot to look forward to.</p><button className="new-journey-button" onClick={openCreate}><span aria-hidden="true">＋</span> New trip <span aria-hidden="true">↗</span></button></div>
+            <div className="journey-shortcuts"><button onClick={() => navigateView("settle")}><span className="shortcut-icon"><NavIcon name="settle" /></span><span><strong>Split the good times</strong><small>Dinners, trips & everything shared</small></span><span aria-hidden="true">↗</span></button></div>
             {planTrips.length > 0 && <div className="saved-trips">
-              <div className="section-title-row"><h2>In progress</h2><span>{planTrips.length}</span></div>
-              {planTrips.map((trip) => (
+              <div className="section-title-row"><h2>Your next chapters</h2><span>{planTrips.length} trips</span></div>
+              <input className="trip-search" aria-label="Search your trips" placeholder="Find a trip…" value={tripSearch} onChange={(event) => setTripSearch(event.target.value)} />
+              {planTrips.filter((trip) => trip.name.toLowerCase().includes(tripSearch.trim().toLowerCase())).map((trip) => (
                 <div className="saved-trip-row" key={trip.id}>
                   <button className="saved-trip-card" onClick={() => router.push(`/trip/${trip.id}`)}>
                     <DestinationCover name={trip.name} />
-                    <div><small>GROUP PLAN · {tripDateLabel(trip)}</small><strong>{trip.name}</strong><span>Open proposals →</span></div>
+                    <div className="destination-card-copy"><small>{tripDateLabel(trip)}</small><strong>{trip.name}</strong><span>Plan it together <b aria-hidden="true">↗</b></span></div>
                   </button>
                   <button className="plan-delete-button" aria-label={`Delete ${trip.name} plan`} title="Delete plan" onClick={() => setDeletePlanTarget(trip)}>×</button>
                 </div>
               ))}
+              {tripSearch && !planTrips.some((trip) => trip.name.toLowerCase().includes(tripSearch.trim().toLowerCase())) && <p className="search-empty" role="status">No trips match “{tripSearch}”. Try another name.</p>}
             </div>}
-            <section className="quick-create-card">
+            <section className="quick-create-card" ref={createRef} hidden={!createOpen}>
+              <button type="button" className="close-create" aria-label="Close new trip form" onClick={() => setCreateOpen(false)}>×</button>
               <div className="eyebrow">New plan</div>
               <h2>Create a trip</h2>
               <label className="field-label">Trip title</label>
