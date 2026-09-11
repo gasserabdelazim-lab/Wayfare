@@ -150,10 +150,30 @@ async function geocodePlace(query, tripName, signal) {
   const clean = String(query || "").trim();
   if (!clean) return null;
   const search = tripName && !clean.toLowerCase().includes(String(tripName).toLowerCase()) ? `${clean}, ${tripName}` : clean;
-  const response = await fetch(`/api/places?q=${encodeURIComponent(search)}`, { signal });
-  if (!response.ok) return null;
-  const payload = await response.json();
-  return payload.results?.[0] || null;
+  const results = await searchExactPlaces(search, signal);
+  return results[0] || null;
+}
+
+async function searchExactPlaces(search, signal) {
+  const encoded = encodeURIComponent(search);
+  const request = async (url, format) => {
+    const response = await fetch(url, { signal, headers: { Accept: "application/json" } });
+    if (!response.ok || !String(response.headers.get("content-type") || "").includes("application/json")) throw new Error("Invalid place response");
+    const payload = await response.json();
+    return format === "photon" ? (payload.features || []).map(formatPlaceResult).filter(Boolean) : (payload.results || []);
+  };
+  const attempts = [
+    request(`/api/places?q=${encoded}`, "api"),
+    request(`https://photon.komoot.io/api/?q=${encoded}&limit=8&lang=en`, "photon"),
+  ];
+  try {
+    return await Promise.any(attempts.map((attempt) => attempt.then((results) => {
+      if (!results.length) throw new Error("No places found");
+      return results;
+    })));
+  } catch {
+    return [];
+  }
 }
 
 function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compact = false }) {
@@ -177,21 +197,22 @@ function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compa
       return;
     }
     const controller = new AbortController();
+    let active = true;
     const timer = setTimeout(async () => {
       setLoading(true);
+      const requestTimeout = setTimeout(() => controller.abort(), 7000);
       try {
         const search = tripName && !clean.toLowerCase().includes(tripName.toLowerCase()) ? `${clean}, ${tripName}` : clean;
-        const response = await fetch(`/api/places?q=${encodeURIComponent(search)}`, { signal: controller.signal });
-        if (!response.ok) throw new Error("Place search failed");
-        const payload = await response.json();
-        setRemoteResults(payload.results || []);
+        setRemoteResults(await searchExactPlaces(search, controller.signal));
       } catch (error) {
         if (error.name !== "AbortError") setRemoteResults([]);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        clearTimeout(requestTimeout);
+        if (active) setLoading(false);
       }
     }, 320);
     return () => {
+      active = false;
       clearTimeout(timer);
       controller.abort();
     };
