@@ -149,8 +149,7 @@ function formatPlaceResult(feature) {
 async function geocodePlace(query, tripName, signal) {
   const clean = String(query || "").trim();
   if (!clean) return null;
-  const search = tripName && !clean.toLowerCase().includes(String(tripName).toLowerCase()) ? `${clean}, ${tripName}` : clean;
-  const results = await searchExactPlaces(search, signal);
+  const results = await searchExactPlaces(clean, signal);
   return results[0] || null;
 }
 
@@ -202,8 +201,7 @@ function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compa
       setLoading(true);
       const requestTimeout = setTimeout(() => controller.abort(), 7000);
       try {
-        const search = tripName && !clean.toLowerCase().includes(tripName.toLowerCase()) ? `${clean}, ${tripName}` : clean;
-        setRemoteResults(await searchExactPlaces(search, controller.signal));
+        setRemoteResults(await searchExactPlaces(clean, controller.signal));
       } catch (error) {
         if (error.name !== "AbortError") setRemoteResults([]);
       } finally {
