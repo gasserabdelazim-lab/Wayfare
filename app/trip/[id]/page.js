@@ -150,10 +150,10 @@ async function geocodePlace(query, tripName, signal) {
   const clean = String(query || "").trim();
   if (!clean) return null;
   const search = tripName && !clean.toLowerCase().includes(String(tripName).toLowerCase()) ? `${clean}, ${tripName}` : clean;
-  const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(search)}&limit=1&lang=en`, { signal });
+  const response = await fetch(`/api/places?q=${encodeURIComponent(search)}`, { signal });
   if (!response.ok) return null;
   const payload = await response.json();
-  return formatPlaceResult(payload.features?.[0]);
+  return payload.results?.[0] || null;
 }
 
 function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compact = false }) {
@@ -181,10 +181,10 @@ function PlacePicker({ value = "", tripName = "", onValueChange, onCommit, compa
       setLoading(true);
       try {
         const search = tripName && !clean.toLowerCase().includes(tripName.toLowerCase()) ? `${clean}, ${tripName}` : clean;
-        const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(search)}&limit=6&lang=en`, { signal: controller.signal });
+        const response = await fetch(`/api/places?q=${encodeURIComponent(search)}`, { signal: controller.signal });
         if (!response.ok) throw new Error("Place search failed");
         const payload = await response.json();
-        setRemoteResults((payload.features || []).map(formatPlaceResult).filter(Boolean));
+        setRemoteResults(payload.results || []);
       } catch (error) {
         if (error.name !== "AbortError") setRemoteResults([]);
       } finally {
