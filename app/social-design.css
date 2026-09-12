@@ -114,10 +114,41 @@ button:disabled { cursor: default; }
 .simple-app-view > h1 { font-family: Inter, sans-serif; letter-spacing: -.05em; font-weight: 600; }
 .feed-row { border-radius: 18px; padding: 18px 14px; }
 .feed-icon { background: #eef1f4; color: #426b88; border-radius: 13px; }
-.profile-hero-card { background: #eef1f4; color: #243b4e; box-shadow: none; }
-.profile-hero-card h2 { font: 600 22px Inter, sans-serif; letter-spacing: -.035em; }
-.profile-device-badge { background: #fff9; color: #344d60; }
-.profile-stats { background: #f0f3f5; }
+.profile-hero-card { display:grid; grid-template-columns:76px minmax(0,1fr); column-gap:20px; row-gap:14px; padding:26px 22px; background:linear-gradient(135deg,#fff 35%,#e8eff4); border:1px solid #dce4eb; color:#202731; box-shadow:0 10px 30px #263d5008; }
+.profile-hero-card::after { display:none; }
+.profile-identity { min-width:0; }
+.profile-kicker { display:block; font-size:11px; font-weight:600; color:#52677a; margin-bottom:6px; }
+.profile-hero-card h2 { color:#202731; font:600 28px Inter,sans-serif; line-height:1.15; letter-spacing:-.035em; overflow-wrap:anywhere; }
+.profile-hero-card p { color:#526171; opacity:1; line-height:1.5; margin-top:7px; }
+.profile-hero-card .large-profile-bubble, .profile-hero-card > .avatar { border:3px solid white; box-shadow:0 3px 15px #263d501a; }
+.profile-hero-card .large-profile-bubble { background:#344d60; color:white; font-size:28px; }
+.profile-device-badge { position:static; grid-column:2; justify-self:start; background:#fff; border:1px solid #d4dfe8; color:#435d72; padding:6px 10px; font-size:10px; }
+.profile-stats { background:transparent; gap:10px; margin:16px 0 22px; }
+.profile-stats div { border-color:#e0e5e9; padding:16px 8px; }
+.profile-stats strong { font:600 23px Inter,sans-serif; color:#344d60; }
+.profile-stats span { opacity:1; color:#5c6976; }
+.profile-editor-card { border-color:#e0e5e9; box-shadow:none; border-radius:22px; padding:24px; }
+.profile-section-heading h3 { font:600 20px Inter,sans-serif; color:#202731; letter-spacing:-.025em; }
+.profile-card p { opacity:1; color:#5c6976; line-height:1.65; }
+.profile-fields label { min-width:0; }
+.profile-fields .field-label, .profile-editor-card > .field-label { opacity:1; color:#435364; font-size:11px; }
+.profile-fields input, .profile-fields textarea, .profile-fields select { color:#202731; background:#f8fafb; border-color:#d5dee6; font-size:16px; min-height:48px; }
+.profile-fields input::placeholder, .profile-fields textarea::placeholder { color:#6b7683; opacity:1; }
+.profile-view .view-intro, .personal-view-intro { color:#5c6976; opacity:1; font-size:13px; line-height:1.65; margin:10px 0 20px; }
+.profile-view .account-card, .trip-personal-profile .account-card { background:white; box-shadow:none; border-color:#e0e5e9; border-radius:18px; margin:18px 0; }
+.profile-view .account-card h3, .trip-personal-profile .account-card h3 { font:600 16px Inter,sans-serif; color:#202731; }
+.profile-view .account-card p, .trip-personal-profile .account-card p { color:#5c6976; opacity:1; overflow-wrap:anywhere; }
+.profile-view .account-signed-in > div, .trip-personal-profile .account-signed-in > div { min-width:0; }
+.personal-app-header { display:flex; justify-content:space-between; align-items:center; gap:16px; max-width:560px; min-height:80px; margin:0 auto; padding:16px 22px; border-bottom:1px solid #e3e6e9; }
+.personal-app-header .brand-mark { color:#202731; font-size:18px; letter-spacing:.18em; }
+.personal-back { display:flex; align-items:center; gap:8px; min-height:44px; padding:0; border:0; color:#435d72; background:transparent; font-size:12px; font-weight:600; }
+.personal-back span { font-size:21px; }
+.group-context-switch { width:100%; display:flex; justify-content:space-between; align-items:center; gap:14px; padding:14px 16px; margin:16px 0 22px; border:1px solid #dce4eb; border-radius:15px; background:#fff; text-align:left; color:#344d60; }
+.group-context-switch small, .group-context-switch strong { display:block; }
+.group-context-switch small { font-size:10px; color:#5c6976; margin-bottom:5px; }
+.group-context-switch strong { font-size:14px; overflow-wrap:anywhere; }
+.group-context-switch > span:last-child { flex-shrink:0; font-size:11px; }
+@media(max-width:400px) { .profile-hero-card { gap:14px; padding:22px 18px; } .profile-hero-card h2 { font-size:25px; } .profile-fields { grid-template-columns:1fr; } .profile-editor-card { padding:20px; } }
 @media (hover: hover) { .saved-trip-card:hover .cover-photo { transform: scale(1.035); } .new-journey-button:hover { background: #344d60; } .poll-option:hover { border-color: #7294ac; } }
 @media (max-width: 600px) { .map-workspace { padding: 0; } .hero-content h1 { font-size: 36px; } .item { padding: 16px; } .location-suggestions { position: absolute; top: calc(100% + 5px); bottom: auto; left: 0; right: 0; max-height: 240px; } }
 @media (max-width: 360px) { .app-content { padding-inline: 16px; } .journey-welcome h1 { font-size: 34px; } .saved-trip-card strong { font-size: 25px; } .poll-card { padding: 16px; } .poll-option-count { font-size: 10px; } }

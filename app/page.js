@@ -443,10 +443,10 @@ export default function Home() {
         </section>}
 
         {activeView === "profile" && <section className="simple-app-view profile-view">
-          <div className="eyebrow">Your space</div><h1>Profile</h1><p className="view-intro">Make Wayfare feel like yours. This profile is used when you create or join plans and groups.</p>
+          <div className="eyebrow">Your personal space</div><h1>My profile</h1><p className="view-intro">Your details, your style. One profile for every plan.</p>
           <div className="profile-hero-card">
             <AvatarPreview name={yourName} avatar={profileAvatar} className="large-profile-bubble" />
-            <div><h2>{yourName.trim() || "Your name"}</h2><p>{profileHome.trim() || "Add your home city"}</p></div>
+            <div className="profile-identity"><span className="profile-kicker">Nice to see you</span><h2>{yourName.trim() || "Your name"}</h2><p>{profileHome.trim() || "Make yourself at home"}</p></div>
             <span className="profile-device-badge">Private account</span>
           </div>
           <div className="profile-stats" aria-label="Your Wayfare activity">

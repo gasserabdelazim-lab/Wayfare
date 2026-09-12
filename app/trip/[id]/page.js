@@ -714,6 +714,7 @@ export default function TripPage() {
     const safeTab = isExpenseGroupName(trip?.name) && nextTab === "plan" ? "settle" : nextTab;
     setActiveTab(safeTab);
     router.replace(`/trip/${tripId}${safeTab === "plan" ? "" : `?view=${safeTab}`}`, { scroll: false });
+    window.scrollTo({ top: 0, behavior: "instant" });
   }
 
   function showNotice(text, type = "success") {
@@ -1281,7 +1282,7 @@ export default function TripPage() {
 
   return (
     <div className="trip-shell">
-      <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
+      {activeTab === "plan" ? <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
         <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><span className="trip-wordmark">WAYFARE</span><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
         <div className="hero-content">
           <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>
@@ -1292,13 +1293,18 @@ export default function TripPage() {
           </div>
           {!expenseOnly && destinationPhotos.length > 1 && <div className="destination-photo-strip" aria-label={`${tripDisplayName} photos`}>{destinationPhotos.slice(0, 6).map((photo, index) => <button key={photo} className={heroPhotoIndex === index ? "active" : ""} aria-label={`Show destination photo ${index + 1}`} style={{ backgroundImage: `url(${photo})` }} onClick={() => setHeroPhotoIndex(index)} />)}</div>}
         </div>
-      </div>
+      </div> : <header className="personal-app-header">
+        <button className="personal-back" onClick={() => router.push(activeTab === "profile" ? "/" : `/?view=${activeTab}`)}><span aria-hidden="true">←</span>{activeTab === "profile" ? "All plans" : activeTab === "settle" ? "All groups" : "All updates"}</button>
+        <span className="brand-mark dark">WAYFARE</span>
+      </header>}
 
       <div className="wrap trip-wrap">
       <header className="trip-view-header">
-        <div className="eyebrow">{activeTab === "plan" ? `${tripDisplayName} itinerary` : activeTab === "settle" ? `${tripDisplayName} expenses` : activeTab === "updates" ? `${tripDisplayName} activity` : "Profile & settings"}</div>
-        <h2>{activeTab === "plan" ? "Activities & ideas" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "You"}</h2>
+        <div className="eyebrow">{activeTab === "plan" ? `${tripDisplayName} itinerary` : activeTab === "settle" ? "Shared expenses" : activeTab === "updates" ? "Latest activity" : "Your personal space"}</div>
+        <h2>{activeTab === "plan" ? "Activities & ideas" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "My profile"}</h2>
+        {activeTab === "profile" && <p className="personal-view-intro">Your details, your style. One profile for every plan.</p>}
       </header>
+      {(activeTab === "settle" || activeTab === "updates") && <button className="group-context-switch" onClick={() => router.push(`/?view=${activeTab}`)}><span><small>Current group</small><strong>{tripDisplayName}</strong></span><span>Change group ↗</span></button>}
 
       {activeTab === "plan" && <div className="trip-summary">
         <div><strong>{counts.agreed}</strong><span>Approved</span></div>
@@ -1627,12 +1633,12 @@ export default function TripPage() {
         <div className="trip-personal-profile">
           <div className="profile-hero-card">
             <Avatar name={profileDraft.name || me} avatar={myTraveler()?.avatar} size={76} />
-            <div><h2>{profileDraft.name || me}</h2><p>{profileDraft.home || "Add your home city"}</p></div>
+            <div className="profile-identity"><span className="profile-kicker">Nice to see you</span><h2>{profileDraft.name || me || "Your name"}</h2><p>{profileDraft.home || "Make yourself at home"}</p></div>
             <span className="profile-device-badge">Private account</span>
           </div>
           <AccountPanel account={account} displayName={profileDraft.name || me} />
           <div className="profile-card trip-profile-card profile-editor-card">
-            <div className="profile-section-heading"><h3>Customise your profile</h3><p>This is about you. Trip dates, currency, and travelers now live in Trip details.</p></div>
+            <div className="profile-section-heading"><h3>Make it yours</h3><p>Choose your photo, update your details, and set your preferred currency.</p></div>
             <label className="field-label">Photo or avatar</label>
             <div className="avatar-picker">{AVATAR_OPTIONS.map((avatar) => <button type="button" key={avatar} aria-label={`Use ${avatar} avatar`} className={myTraveler()?.avatar === avatar ? "selected" : ""} onClick={() => updateMyAvatar(avatar)}>{avatar}</button>)}</div>
             <label className="photo-upload-button">Upload your photo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseMyPhoto(event.target.files?.[0])} /></label>
