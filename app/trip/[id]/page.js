@@ -1,5 +1,6 @@
 "use client";
 import ActivityPolls from "../../../components/ActivityPolls";
+import QuestionPolls from "../../../components/QuestionPolls";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -893,7 +894,7 @@ export default function TripPage() {
     } else {
       result = await supabase.from("votes").insert({ activity_id: activityId, traveler_id: traveler.id, value });
     }
-    if (result?.error) showNotice(`Vote wasn't saved: ${result.error.message}`, "error");
+    if (result?.error) throw new Error(result.error.message);
     await load();
   }
 
@@ -901,7 +902,7 @@ export default function TripPage() {
     const traveler = myTraveler();
     if (!traveler || !text.trim()) return;
     const { error } = await supabase.from("comments").insert({ activity_id: activityId, traveler_id: traveler.id, text: text.trim() });
-    if (error) showNotice(`Comment wasn't saved: ${error.message}`, "error");
+    if (error) throw new Error(error.message);
     await load();
   }
 
@@ -1357,7 +1358,7 @@ export default function TripPage() {
             <div className="plan-view-toggle" role="group" aria-label="Itinerary view">
               <button type="button" className={planView === "timeline" ? "active" : ""} onClick={() => setPlanView("timeline")}>Timeline</button>
               <button type="button" className={planView === "map" ? "active" : ""} onClick={() => setPlanView("map")}><Icon name="pin" />Map</button>
-              <button type="button" className={planView === "polls" ? "active" : ""} onClick={() => setPlanView("polls")}>Group votes</button>
+              <button type="button" className={planView === "polls" ? "active" : ""} onClick={() => setPlanView("polls")}>Group posts</button>
             </div>
           </div>
           {planView === "map" && <>
@@ -1377,7 +1378,11 @@ export default function TripPage() {
         </section>
       )}
 
-      {planView === "polls" && <ActivityPolls activities={activities} votesByActivity={votesByActivity} travelers={travelers} travelerId={currentTraveler?.id} onVote={castVote} onAdd={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }} onView={(id) => { setPlanView("timeline"); setTimeout(() => itemRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100); }} />}
+      {planView === "polls" && <>
+        <div className="polls-intro"><span className="eyebrow">Less back-and-forth. More going places.</span><h3>Your group's corner.</h3><p>Questions, activity votes, and conversations. All together here.</p></div>
+        <QuestionPolls tripId={tripId} userId={account.user.id} />
+        <ActivityPolls activities={activities} votesByActivity={votesByActivity} commentsByActivity={commentsByActivity} travelers={travelers} travelerId={currentTraveler?.id} onVote={castVote} onComment={addComment} onAdd={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }} onView={(id) => { setPlanView("timeline"); setTimeout(() => itemRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100); }} />
+      </>}
 
       {activities.length === 0 && planView === "timeline" && (
         <div className="empty-state">
@@ -1406,12 +1411,8 @@ export default function TripPage() {
             </div>
             {items.map((a) => {
               const votes = votesByActivity[a.id] || [];
-              const myVote = votes.find((v) => v.traveler_id === myTraveler()?.id)?.value;
               const up = votes.filter((v) => v.value === "up").length;
-              const meh = votes.filter((v) => v.value === "meh").length;
-              const down = votes.filter((v) => v.value === "down").length;
               const status = statusOf(a.id);
-              const comments = commentsByActivity[a.id] || [];
               const isTop = a.id === topId && up > 0;
               const isJustAdded = a.id === justAddedId;
               const editableLocation = a.location === "Add exact location" ? "" : (a.location || "");
@@ -1448,26 +1449,7 @@ export default function TripPage() {
                       </select>
                     )}
                   </div>
-                  <div className="vote-row">
-                    <button className={`vbtn ${myVote === "up" ? "active-up" : ""}`} onClick={() => castVote(a.id, "up")}><Icon name="up" />Good{up > 0 ? ` (${up})` : ""}</button>
-                    <button className={`vbtn ${myVote === "meh" ? "active-meh" : ""}`} onClick={() => castVote(a.id, "meh")}><Icon name="meh" />Meh{meh > 0 ? ` (${meh})` : ""}</button>
-                    <button className={`vbtn ${myVote === "down" ? "active-down" : ""}`} onClick={() => castVote(a.id, "down")}><Icon name="down" />Skip{down > 0 ? ` (${down})` : ""}</button>
-                  </div>
-                  {votes.length > 0 && (
-                    <div className="voter-avatars">
-                      {votes.map((v) => {
-                        const t = travelers.find((tr) => tr.id === v.traveler_id);
-                        if (!t) return null;
-                        return <span key={v.id} className={`voter-dot vd-${v.value}`}><Avatar name={t.name} avatar={t.avatar} size={18} /></span>;
-                      })}
-                    </div>
-                  )}
-                  {comments.length > 0 && (
-                    <div className="comment-list">
-                      {comments.map((c) => <div className="comment" key={c.id}><b>{c.travelers?.name || "Someone"}:</b> {c.text}</div>)}
-                    </div>
-                  )}
-                  <input className="comment-input" placeholder="Add a comment (optional)" onKeyDown={(e) => { if (e.key === "Enter" && e.target.value.trim()) { addComment(a.id, e.target.value); e.target.value = ""; } }} />
+                  <button className="timeline-discussion-link" onClick={() => { setPlanView("polls"); setTimeout(() => document.getElementById(`group-post-${a.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150); }}>Votes & conversation <span>View group post ↗</span></button>
                   <div className="item-actions">
                     <a className="cal-btn map-action" href={mapsUrl(a)} target="_blank" rel="noreferrer"><Icon name="pin" />Open in Maps</a>
                     <button className="cal-btn" onClick={() => addActivityToCalendar(a)} title={a.day_date ? "Download calendar event" : "Add trip dates first"}><Icon name="cal" />{a.day_date ? "Add to calendar" : "Set dates for calendar"}</button>
