@@ -2,6 +2,8 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import "./social-design.css";
 
+export const viewport = { themeColor: "#ffffff", colorScheme: "light" };
+
 export const metadata = {
   title: "Wayfare — plan together",
   description: "Vote on the itinerary, split the costs, plan the trip together."

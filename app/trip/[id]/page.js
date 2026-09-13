@@ -1282,7 +1282,7 @@ export default function TripPage() {
 
   return (
     <div className="trip-shell">
-      {activeTab === "plan" ? <div className="trip-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(9,22,25,.08), rgba(9,22,25,.86)), url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
+      {activeTab === "plan" ? <div className="trip-hero" style={{ backgroundImage: `url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
         <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><span className="trip-wordmark">WAYFARE</span><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
         <div className="hero-content">
           <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>

@@ -1,4 +1,4 @@
-/* Shared mobile visual system: warm white, charcoal and muted blue. */
+/* Shared mobile visual system. Light surfaces and readable foregrounds. */
 :root { --ink: #202731; --paper: #faf9f6; --paper-2: #f0f1f2; --line: #dfe2e6; --teal: #426b88; --teal-deep: #243b4e; --accent-lime: #e0eaf0; --accent-lilac: #eef1f4; }
 body { background: #eceef0; }
 button, input, select, textarea { -webkit-tap-highlight-color: transparent; }
@@ -176,3 +176,49 @@ button:disabled { cursor: default; }
 .post-discussion button:disabled { opacity:.5; }
 .poll-card { scroll-margin-top:100px; }
 .poll-option-label { overflow-wrap:anywhere; min-width:0; }
+
+/* Daylight palette: remove large dark surfaces without washing out text. */
+:root { color-scheme:light; --paper:#ffffff; --paper-2:#f4f9fc; --line:#e0edf4; --action-bg:#dff2ff; --action-ink:#255777; }
+body { background:#f4faff; }
+.mobile-app-home, .trip-shell { background:#fff; }
+.app-header, .personal-app-header { background:#fff; border-color:#e5eff5; }
+.mobile-bottom-nav { background:rgba(255,255,255,.98); border:1px solid #dae8f1; box-shadow:0 6px 28px #396c9014; }
+.bottom-nav-item { color:#5d6c7c; }
+.bottom-nav-item.active { background:var(--action-bg); color:var(--action-ink); }
+.new-journey-button, .poll-create-button, .poll-add, .save-profile-button, .primary-add,
+.quick-create-card > button:not(.close-create), .create-expense-group, .add-expense-button,
+.fab, .share-primary-button, .account-form > button, .account-secondary,
+.invite-link-row button, .member-add-row button, .book-action {
+  background:var(--action-bg); color:var(--action-ink); border:1px solid #c4e3f6; box-shadow:0 4px 14px #396c900a;
+}
+.new-journey-button span:first-child, .new-journey-button span:last-child { color:var(--action-ink); }
+.journey-welcome h1 span { color:#397fa5; }
+.journey-shortcuts > button, .polls-intro { background:#f0f9ff; border-color:#deeffa; }
+.shortcut-icon, .section-title-row > span, .feed-icon { background:#eaf6fe; color:#315e7a; }
+.trip-day-planner, .plan-view-toggle { background:#f4f9fc; border-color:#e0edf4; }
+.trip-summary .summary-budget { background:#edf9f5; color:#326858; }
+.poll-filter button[aria-pressed="true"], .split-methods button.active { background:var(--action-bg); color:var(--action-ink); border-color:#9bcce8; box-shadow:none; }
+.poll-fill { background:#e0f3ff; }
+.option-meh .poll-fill { background:#fff5d9; }
+.option-down .poll-fill { background:#fff0eb; }
+.profile-hero-card { background:linear-gradient(120deg,#fff 30%,#eff9ff); border-color:#deedf6; }
+.profile-hero-card .large-profile-bubble { background:#dff2ff; color:#255777; }
+.profile-bubble, .settle-choice-icon { background:#e4f4ff; color:#255777; }
+.saved-trip-card { background:#fff; color:var(--ink); border:1px solid #e0edf4; box-shadow:0 5px 20px #396c900a; padding-top:160px; min-height:0; }
+.saved-trip-card .trip-card-cover { height:180px; background:#e6f4fc; }
+.saved-trip-card:after { display:none; }
+.saved-trip-card .destination-card-copy { position:relative; background:#fff; border-radius:18px 18px 0 0; padding:18px 20px; }
+.saved-trip-card small { color:#376782; background:#edf8ff; border-color:#d9edf9; margin-bottom:10px; }
+.saved-trip-card strong { color:#263d50; font-size:26px; }
+.saved-trip-card .destination-card-copy > span { color:#5d6c7c; }
+.destination-card-copy b { background:var(--action-bg); color:var(--action-ink); }
+.plan-delete-button { background:#fff; color:#526575; border-color:#e0edf4; }
+.trip-hero { background-color:#edf8ff; border-bottom:1px solid #e0edf4; }
+.trip-hero .hero-content { background:#fff; color:var(--ink); width:100%; margin:100px 0 0; padding:24px 20px; border-radius:24px 24px 0 0; }
+.hero-content h1 { color:#263d50; text-shadow:none; }
+.hero-eyebrow { color:#426b88; opacity:1; }
+.hero-meta { color:#526575; }
+.hero-nav .trip-wordmark { color:#263d50; text-shadow:none; background:#fff; border-radius:12px; padding:10px; }
+.hero-nav .hero-back, .hero-nav .share-btn { background:#fff; color:#315e7a; border:1px solid #deedf6; }
+@media(hover:hover) { .new-journey-button:hover, .poll-create-button:hover, .save-profile-button:hover, .fab:hover { background:#cfeaff; color:var(--action-ink); } }
+@media(max-width:380px) { .hero-nav .trip-wordmark { font-size:11px; letter-spacing:.09em; padding:8px; } .hero-nav .share-btn { padding:8px; font-size:10px; } }
