@@ -1,6 +1,8 @@
 "use client";
 import ActivityPolls from "../../../components/ActivityPolls";
 import QuestionPolls from "../../../components/QuestionPolls";
+import { UpdateBadge, UpdateToast, UpdatesFeed } from "../../../components/UpdateNotifications";
+import { useUpdateNotifications } from "../../../lib/useUpdateNotifications";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -485,6 +487,7 @@ export default function TripPage() {
     return ["plan", "settle", "updates", "profile"].includes(requested) ? requested : "plan";
   });
   const [currency, setCurrency] = useState("EUR");
+  const notifications = useUpdateNotifications(account.user?.id, activeTab === "updates", tripId);
   const [tripDateDraft, setTripDateDraft] = useState({ start: "", end: "" });
   const [profileDraft, setProfileDraft] = useState({ name: "", home: "", bio: "", currency: "EUR" });
   const [justAddedId, setJustAddedId] = useState(null);
@@ -1237,33 +1240,6 @@ export default function TripPage() {
   const money = (value, decimals = 2) => `${CURRENCIES[currency].symbol}${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
   const moneyIn = (value, code, decimals = 2) => `${CURRENCIES[code]?.symbol || `${code} `}${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
   const formSplitPreview = calculateFormSplit();
-  const updateFeed = useMemo(() => {
-    const feed = [];
-    activities.forEach((activity) => feed.push({
-      id: `activity-${activity.id}`,
-      date: activity.created_at,
-      icon: "✦",
-      title: activity.name,
-      text: "New activity suggestion",
-    }));
-    Object.entries(votesByActivity).forEach(([activityId, votes]) => votes.forEach((vote) => {
-      const activity = activities.find((item) => item.id === activityId);
-      const traveler = travelers.find((item) => item.id === vote.traveler_id);
-      const label = vote.value === "up" ? "voted good" : vote.value === "meh" ? "voted maybe" : "voted skip";
-      feed.push({ id: `vote-${vote.id}`, date: vote.created_at, icon: "✓", title: activity?.name || "Activity", text: `${traveler?.name || "Someone"} ${label}` });
-    }));
-    Object.entries(commentsByActivity).forEach(([activityId, comments]) => comments.forEach((comment) => {
-      const activity = activities.find((item) => item.id === activityId);
-      feed.push({ id: `comment-${comment.id}`, date: comment.created_at, icon: "“", title: activity?.name || "Activity", text: `${comment.travelers?.name || "Someone"}: ${comment.text}` });
-    }));
-    extraCosts.forEach((cost) => feed.push({ id: `cost-${cost.id}`, date: cost.created_at, icon: "⇄", title: cost.description, text: `${cost.travelers?.name || "Someone"} added ${moneyIn(cost.amount, CURRENCIES[cost.currency] ? cost.currency : currency)}` }));
-    settlements.forEach((settlement) => {
-      const from = travelers.find((traveler) => traveler.id === settlement.from_traveler);
-      const to = travelers.find((traveler) => traveler.id === settlement.to_traveler);
-      feed.push({ id: `settlement-${settlement.id}`, date: settlement.settled_at || settlement.created_at, icon: "✓", title: "Payment settled", text: `${from?.name || "Someone"} paid ${to?.name || "someone"} ${money(settlement.amount)}` });
-    });
-    return feed.sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 30);
-  }, [activities, votesByActivity, commentsByActivity, extraCosts, settlements, travelers, currency]);
 
   if (account.loading || accessState === "loading") return <main className="auth-shell"><div className="auth-loading"><div className="brand-mark dark">WAYFARE</div><p>Opening your private plan…</p></div></main>;
 
@@ -1624,9 +1600,10 @@ export default function TripPage() {
       </section>
 
       <section className={activeTab === "updates" ? "tab-panel" : "tab-panel is-hidden"}>
-        <div className="updates-card">
-          {updateFeed.length ? updateFeed.map((entry) => <div className="update-row" key={entry.id}><span className="feed-icon">{entry.icon}</span><div><strong>{entry.title}</strong><p>{entry.text}</p><small>{entry.date ? new Date(entry.date).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Just now"}</small></div></div>) : <div className="app-empty"><span>✦</span><h3>No updates yet</h3><p>New activities, votes, comments, and expenses will appear here.</p></div>}
-        </div>
+        <UpdatesFeed notifications={notifications} onOpen={(entry) => {
+          if (entry.id.startsWith("cost-") || entry.id.startsWith("settlement-") || expenseOnly) switchTab("settle");
+          else { switchTab("plan"); setPlanView("polls"); }
+        }} />
       </section>
 
       <section className={activeTab === "profile" ? "tab-panel" : "tab-panel is-hidden"}>
@@ -1688,9 +1665,10 @@ export default function TripPage() {
       <nav className={`mobile-bottom-nav trip-bottom-nav ${expenseOnly ? "expense-group-nav" : ""}`} aria-label="Trip navigation">
         {!expenseOnly && <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="plans" /><small>Itinerary</small></button>}
         <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
-        <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => switchTab("updates")}><NavIcon name="updates" /><small>Updates</small></button>
+        <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => switchTab("updates")}><UpdateBadge count={notifications.unread} /><small>Updates</small></button>
         <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => switchTab("profile")}><NavIcon name="profile" /><small>Profile</small></button>
       </nav>
+      <UpdateToast notification={notifications.toast} onOpen={() => { notifications.dismiss(); switchTab("updates"); }} onDismiss={notifications.dismiss} />
       </div>
     </div>
   );

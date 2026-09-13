@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import NavIcon from "../components/NavIcon";
 import AccountPanel from "../components/AccountPanel";
+import { UpdateBadge, UpdateToast, UpdatesFeed } from "../components/UpdateNotifications";
+import { useUpdateNotifications } from "../lib/useUpdateNotifications";
 import { destinationInfo, findDestinationPhotos } from "../lib/destinations";
 import { useWayfareAccount } from "../lib/useWayfareAccount";
 
@@ -116,6 +118,7 @@ export default function Home() {
     requestAnimationFrame(() => createRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
   const [activeView, setActiveView] = useState("plans");
+  const notifications = useUpdateNotifications(account.user?.id, activeView === "updates");
   const [trips, setTrips] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [groupName, setGroupName] = useState("");
@@ -439,7 +442,7 @@ export default function Home() {
 
         {activeView === "updates" && <section className="simple-app-view">
           <div className="eyebrow">Latest activity</div><h1>Updates</h1><p className="view-intro">New suggestions and changes across your plans.</p>
-          {recentActivities.length ? recentActivities.map((activity) => <button className="feed-row" key={activity.id} onClick={() => router.push(`/trip/${activity.trip_id}?view=updates`)}><span className="feed-icon">✦</span><div><strong>{activity.name}</strong><small>Added to {tripById[activity.trip_id]?.name || "a group plan"}</small></div><b>›</b></button>) : <EmptyView title="No updates yet" text="New proposals and votes will appear here." />}
+          <UpdatesFeed notifications={notifications} onOpen={(entry) => router.push(`/trip/${entry.tripId}?view=updates`)} />
         </section>}
 
         {activeView === "profile" && <section className="simple-app-view profile-view">
@@ -473,9 +476,10 @@ export default function Home() {
 
       {deletePlanTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deletingPlan && setDeletePlanTarget(null)}><div className="confirm-sheet plan-delete-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-plan-title" onClick={(event) => event.stopPropagation()}><div className="confirm-icon">×</div><h3 id="delete-plan-title">Delete “{deletePlanTarget.name}”?</h3><p>This permanently removes the plan, its activities, votes, comments, and expenses for everyone with the link.</p><div className="confirm-actions"><button onClick={() => setDeletePlanTarget(null)} disabled={deletingPlan}>Cancel</button><button className="danger-button" onClick={deletePlan} disabled={deletingPlan}>{deletingPlan ? "Deleting…" : "Delete plan"}</button></div></div></div>}
       {actionNotice && <div className="action-notice" role="status">{actionNotice}</div>}
+      <UpdateToast notification={notifications.toast} onOpen={() => { notifications.dismiss(); navigateView("updates"); }} onDismiss={notifications.dismiss} />
 
       <nav className="mobile-bottom-nav home-bottom-nav" aria-label="Main navigation">
-        {NAV_ITEMS.map((item) => <button key={item.id} className={`bottom-nav-item ${activeView === item.id ? "active" : ""}`} onClick={() => navigateView(item.id)}><NavIcon name={item.icon} /><small>{item.label}</small></button>)}
+        {NAV_ITEMS.map((item) => <button key={item.id} className={`bottom-nav-item ${activeView === item.id ? "active" : ""}`} onClick={() => navigateView(item.id)}>{item.id === "updates" ? <UpdateBadge count={notifications.unread} /> : <NavIcon name={item.icon} />}<small>{item.label}</small></button>)}
       </nav>
     </main>
   );
