@@ -5,7 +5,7 @@ import "./social-design.css";
 export const viewport = { themeColor: "#f1f3ef", colorScheme: "light" };
 
 export const metadata = {
-  title: "Wayfare — plan together",
+  title: "Palvoya — plan together",
   description: "Vote on the itinerary, split the costs, plan the trip together."
 };
 

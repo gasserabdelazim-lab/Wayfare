@@ -350,12 +350,12 @@ export default function Home() {
     router.push(`/trip/${group.id}?view=settle`);
   }
 
-  if (account.loading) return <main className="auth-shell"><div className="auth-loading"><div className="brand-mark dark">WAYFARE</div><p>Checking your secure session…</p></div></main>;
+  if (account.loading) return <main className="auth-shell"><div className="auth-loading"><div className="brand-mark dark">PALVOYA</div><p>Checking your secure session…</p></div></main>;
 
   if (!account.user) return (
     <main className="auth-shell">
       <section className="auth-welcome">
-        <div className="brand-mark dark">WAYFARE</div>
+        <div className="brand-mark dark">PALVOYA</div>
         <span className="eyebrow">Private group travel</span>
         <h1>Your plans belong to your group.</h1>
         <p>Sign in to create trips, invite friends, vote on activities, and settle expenses securely.</p>
@@ -368,7 +368,7 @@ export default function Home() {
   return (
     <main className="mobile-app-home">
       <header className="app-header">
-        <div><div className="brand-mark dark">WAYFARE</div><p>Plan together. Settle simply.</p></div>
+        <div><div className="brand-mark dark">PALVOYA</div><p>Plan together. Settle simply.</p></div>
         <button type="button" className="header-profile-button" aria-label="Open your profile" onClick={() => navigateView("profile")}><AvatarPreview name={yourName} avatar={profileAvatar} /></button>
       </header>
 
@@ -452,7 +452,7 @@ export default function Home() {
             <div className="profile-identity"><span className="profile-kicker">Nice to see you</span><h2>{yourName.trim() || "Your name"}</h2><p>{profileHome.trim() || "Make yourself at home"}</p></div>
             <span className="profile-device-badge">Private account</span>
           </div>
-          <div className="profile-stats" aria-label="Your Wayfare activity">
+          <div className="profile-stats" aria-label="Your Palvoya activity">
             <div><strong>{planTrips.length}</strong><span>Trips</span></div>
             <div><strong>{expenseGroups.length}</strong><span>Groups</span></div>
             <div><strong>{recentActivities.length}</strong><span>Updates</span></div>
@@ -469,7 +469,7 @@ export default function Home() {
               <label className="profile-field-wide"><span className="field-label">Preferred currency</span><select value={profileCurrency} onChange={(event) => setProfileCurrency(event.target.value)}>{CURRENCY_OPTIONS.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
             </div>
             <button type="button" className="save-profile-button" onClick={saveProfile}>Save profile</button>
-            <p className="profile-privacy-note">Saved privately to your Wayfare account and available on your other devices.</p>
+            <p className="profile-privacy-note">Saved privately to your Palvoya account and available on your other devices.</p>
           </div>
         </section>}
       </div>

@@ -29,7 +29,7 @@ export async function GET(request) {
     endpoint.searchParams.set("limit", "8");
     endpoint.searchParams.set("lang", "en");
     const response = await fetch(endpoint, {
-      headers: { Accept: "application/json", "User-Agent": "Wayfare place search" },
+      headers: { Accept: "application/json", "User-Agent": "Palvoya place search" },
       next: { revalidate: 3600 },
     });
     if (!response.ok) throw new Error(`Geocoder returned ${response.status}`);

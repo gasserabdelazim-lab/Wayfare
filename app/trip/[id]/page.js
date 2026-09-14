@@ -437,7 +437,7 @@ function downloadIcs(activity) {
   const end = new Date(start.getTime() + 90 * 60000);
   const fmt = (d) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
   const ics = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Wayfare//Trip//EN", "BEGIN:VEVENT",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Palvoya//Trip//EN", "BEGIN:VEVENT",
     "UID:" + activity.id + "@wayfare",
     "DTSTAMP:" + fmt(start),
     "DTSTART:" + fmt(start),
@@ -840,7 +840,7 @@ export default function TripPage() {
     if (!secureInviteUrl) return;
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${tripDisplayName} on Wayfare`, text: `Sign in to join my private ${expenseOnly ? "expense group" : "trip plan"} on Wayfare.`, url: secureInviteUrl });
+        await navigator.share({ title: `${tripDisplayName} on Palvoya`, text: `Sign in to join my private ${expenseOnly ? "expense group" : "trip plan"} on Palvoya.`, url: secureInviteUrl });
         return;
       } catch (error) {
         if (error?.name === "AbortError") return;
@@ -1116,7 +1116,7 @@ export default function TripPage() {
       to_traveler: transfer.toId,
       amount: roundMoney(transfer.amt),
       currency,
-      note: "Marked paid in Wayfare",
+      note: "Marked paid in Palvoya",
       settled_at: new Date().toISOString(),
     });
     setSettlementSaving(false);
@@ -1241,15 +1241,15 @@ export default function TripPage() {
   const moneyIn = (value, code, decimals = 2) => `${CURRENCIES[code]?.symbol || `${code} `}${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
   const formSplitPreview = calculateFormSplit();
 
-  if (account.loading || accessState === "loading") return <main className="auth-shell"><div className="auth-loading"><div className="brand-mark dark">WAYFARE</div><p>Opening your private plan…</p></div></main>;
+  if (account.loading || accessState === "loading") return <main className="auth-shell"><div className="auth-loading"><div className="brand-mark dark">PALVOYA</div><p>Opening your private plan…</p></div></main>;
 
   if (!account.user) {
     return (
-      <main className="auth-shell"><section className="auth-welcome invite-auth-welcome"><button type="button" className="auth-back-button" onClick={() => router.push("/")}>← Back</button><div className="brand-mark dark">WAYFARE</div><span className="eyebrow">Private invitation</span><h1>{inviteToken ? "A friend invited you to plan together." : "Sign in to open this plan."}</h1><p>Only authenticated members can see activities, votes, and shared expenses.</p><AccountPanel account={account} displayName={nameInput} redirectTo={typeof window === "undefined" ? undefined : window.location.href} /></section></main>
+      <main className="auth-shell"><section className="auth-welcome invite-auth-welcome"><button type="button" className="auth-back-button" onClick={() => router.push("/")}>← Back</button><div className="brand-mark dark">PALVOYA</div><span className="eyebrow">Private invitation</span><h1>{inviteToken ? "A friend invited you to plan together." : "Sign in to open this plan."}</h1><p>Only authenticated members can see activities, votes, and shared expenses.</p><AccountPanel account={account} displayName={nameInput} redirectTo={typeof window === "undefined" ? undefined : window.location.href} /></section></main>
     );
   }
 
-  if (accessState === "denied" || !trip) return <main className="auth-shell"><section className="auth-welcome access-denied-card"><button type="button" className="auth-back-button" onClick={() => router.push("/")}>← Back to plans</button><div className="brand-mark dark">WAYFARE</div><span className="eyebrow">Private plan</span><h1>You don’t have access.</h1><p>{accessError || "Ask the owner to send you a secure invite link."}</p></section></main>;
+  if (accessState === "denied" || !trip) return <main className="auth-shell"><section className="auth-welcome access-denied-card"><button type="button" className="auth-back-button" onClick={() => router.push("/")}>← Back to plans</button><div className="brand-mark dark">PALVOYA</div><span className="eyebrow">Private plan</span><h1>You don’t have access.</h1><p>{accessError || "Ask the owner to send you a secure invite link."}</p></section></main>;
 
   const currentTraveler = myTraveler();
   const canManageMembers = currentTraveler?.role === "owner" || trip?.created_by === account.user?.id || travelers.length === 1;
@@ -1259,7 +1259,7 @@ export default function TripPage() {
   return (
     <div className="trip-shell">
       {activeTab === "plan" ? <div className="trip-hero" style={{ backgroundImage: `url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
-        <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><span className="trip-wordmark">WAYFARE</span><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
+        <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><span className="trip-wordmark">PALVOYA</span><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
         <div className="hero-content">
           <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>
           <h1>{tripDisplayName}</h1>
@@ -1271,7 +1271,7 @@ export default function TripPage() {
         </div>
       </div> : <header className="personal-app-header">
         <button className="personal-back" onClick={() => router.push(activeTab === "profile" ? "/" : `/?view=${activeTab}`)}><span aria-hidden="true">←</span>{activeTab === "profile" ? "All plans" : activeTab === "settle" ? "All groups" : "All updates"}</button>
-        <span className="brand-mark dark">WAYFARE</span>
+        <span className="brand-mark dark">PALVOYA</span>
       </header>}
 
       <div className="wrap trip-wrap">
@@ -1626,12 +1626,12 @@ export default function TripPage() {
               <label className="profile-field-wide"><span className="field-label">Preferred app currency</span><select value={profileDraft.currency} onChange={(event) => setProfileDraft((current) => ({ ...current, currency: event.target.value }))}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select></label>
             </div>
             <button type="button" className="save-profile-button" onClick={savePersonalProfile}>Save personal profile</button>
-            <p className="profile-privacy-note">Saved privately to your Wayfare account and synced across your devices.</p>
+            <p className="profile-privacy-note">Saved privately to your Palvoya account and synced across your devices.</p>
           </div>
         </div>
       </section>
 
-      <div className="footnote">Wayfare — private plans for authenticated group members.</div>
+      <div className="footnote">Palvoya — private plans for authenticated group members.</div>
 
       {actionNotice && <div className={`action-notice ${actionNotice.type === "error" ? "notice-error" : ""}`} role="status">{actionNotice.text}</div>}
       {deleteTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deleting && setDeleteTarget(null)}>

@@ -32,7 +32,7 @@ export default function AccountPanel({ account, displayName, redirectTo }) {
 
   return (
     <div className="account-card">
-      <div className="account-card-head"><div><span className="eyebrow">Private Wayfare account</span><h3>Sign in to continue</h3><p>Your plans and expenses are only available to authenticated group members.</p></div></div>
+      <div className="account-card-head"><div><span className="eyebrow">Private Palvoya account</span><h3>Sign in to continue</h3><p>Your plans and expenses are only available to authenticated group members.</p></div></div>
       <button type="button" className="google-signin-button" onClick={() => account.signInWithGoogle(redirectTo)}>
         <span className="google-mark" aria-hidden="true">G</span>
         Continue with Google
@@ -48,7 +48,7 @@ export default function AccountPanel({ account, displayName, redirectTo }) {
         <button type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}</button>
       </form>
       {account.message && <div className={`account-message ${account.message.type}`}>{account.message.text}</div>}
-      <p className="account-security-note">Wayfare never receives your Google password.</p>
+      <p className="account-security-note">Palvoya never receives your Google password.</p>
     </div>
   );
 }

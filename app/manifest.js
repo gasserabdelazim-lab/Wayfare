@@ -1,7 +1,7 @@
 export default function manifest() {
   return {
-    name: "Wayfare — plan together",
-    short_name: "Wayfare",
+    name: "Palvoya — plan together",
+    short_name: "Palvoya",
     description: "Plan trips together, vote on activities, and settle shared expenses.",
     start_url: "/",
     display: "standalone",
