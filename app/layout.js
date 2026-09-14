@@ -2,7 +2,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import "./social-design.css";
 
-export const viewport = { themeColor: "#ffffff", colorScheme: "light" };
+export const viewport = { themeColor: "#f1f3ef", colorScheme: "light" };
 
 export const metadata = {
   title: "Wayfare — plan together",

@@ -238,3 +238,38 @@ body { background:#f4faff; }
 .hero-nav .hero-back, .hero-nav .share-btn { background:#fff; color:#315e7a; border:1px solid #deedf6; }
 @media(hover:hover) { .new-journey-button:hover, .poll-create-button:hover, .save-profile-button:hover, .fab:hover { background:#cfeaff; color:var(--action-ink); } }
 @media(max-width:380px) { .hero-nav .trip-wordmark { font-size:11px; letter-spacing:.09em; padding:8px; } .hero-nav .share-btn { padding:8px; font-size:10px; } }
+
+/* Restored grey-and-green palette; keep the current layouts and readable cards. */
+:root { --ink:#172c2b; --paper:#f1f3ef; --paper-2:#e8ede7; --line:#dbe2d9; --line-strong:#c7d3c9; --teal:#216557; --teal-deep:#173e35; --accent-lime:#dcf590; --accent-lilac:#e5eee7; --action-bg:#216557; --action-ink:#fff; }
+body { background:#e8ede7; }
+.mobile-app-home, .trip-shell, .app-header, .personal-app-header { background:var(--paper); border-color:var(--line); }
+.mobile-bottom-nav { background:#17352e; border-color:#17352e; box-shadow:0 8px 28px #17352e24; }
+.bottom-nav-item { color:#d5e1d7; }
+.bottom-nav-item.active { background:var(--accent-lime); color:#1d3628; }
+.new-journey-button, .poll-create-button, .poll-add, .save-profile-button, .primary-add,
+.quick-create-card > button:not(.close-create), .create-expense-group, .add-expense-button,
+.fab, .share-primary-button, .account-form > button, .account-secondary,
+.invite-link-row button, .member-add-row button, .book-action { border-color:#216557; box-shadow:0 4px 14px #173e350d; }
+.new-journey-button span:first-child, .new-journey-button span:last-child { color:#dcf590; }
+.journey-welcome h1 span, .personal-back, .poll-view, .profile-stats strong { color:#216557; }
+.journey-shortcuts > button, .polls-intro { background:#e5eee7; color:#234d3f; border-color:#d3e0d6; }
+.journey-shortcuts small { color:#53695d; }
+.shortcut-icon, .section-title-row > span, .feed-icon, .profile-bubble, .settle-choice-icon { background:#e1ecdf; color:#285c46; }
+.trip-day-planner, .plan-view-toggle { background:#e8ede7; border-color:#dbe2d9; }
+.poll-filter button[aria-pressed="true"], .split-methods button.active { background:#216557; color:#fff; border-color:#216557; }
+.poll-fill { background:#e0efd9; }
+.option-meh .poll-fill { background:#fff5d9; }
+.option-down .poll-fill { background:#fff0eb; }
+.profile-hero-card { background:linear-gradient(120deg,#fff 30%,#e5eee7); border-color:#d5e1d7; }
+.profile-hero-card .large-profile-bubble { background:#dcebdc; color:#216557; }
+.profile-kicker, .profile-device-badge, .profile-fields .field-label, .profile-editor-card > .field-label { color:#466352; }
+.profile-fields input, .profile-fields textarea, .profile-fields select { background:#f5f7f3; border-color:#d5dfd4; color:#172c2b; }
+.saved-trip-card, .plan-delete-button { border-color:#dbe2d9; box-shadow:0 5px 20px #173e350a; }
+.saved-trip-card .trip-card-cover, .trip-hero { background-color:#e5eee7; }
+.saved-trip-card small { color:#38604a; background:#edf3e8; border-color:#dbe7d6; }
+.saved-trip-card strong, .hero-content h1, .hero-nav .trip-wordmark { color:#172c2b; }
+.destination-card-copy b { background:#dcf590; color:#1d3628; }
+.hero-eyebrow, .hero-nav .hero-back, .hero-nav .share-btn, .group-context-switch { color:#216557; border-color:#d5e1d7; }
+.post-discussion button, .notification-open { background:#e1ecdf; color:#285c46; }
+.update-toast { border-color:#d5e1d7; color:#172c2b; box-shadow:0 12px 40px #173e3520; }
+@media(hover:hover) { .new-journey-button:hover, .poll-create-button:hover, .save-profile-button:hover, .fab:hover { background:#173e35; color:#fff; } .poll-option:hover { border-color:#79a18b; } }
