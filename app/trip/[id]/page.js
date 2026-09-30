@@ -31,6 +31,7 @@ const icons = {
   star: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17.6l-6.1 3.4 1.5-6.8L2.2 9.5l6.9-.7z"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
 };
 
 function Icon({ name, style }) {
@@ -481,6 +482,10 @@ export default function TripPage() {
   const [deletingCost, setDeletingCost] = useState(false);
   const [costForm, setCostForm] = useState({ desc: "", amt: "", paidBy: "", currency: "", exchangeRate: "1", splitMethod: "equal", participantIds: [], splitValues: {}, notes: "", receiptData: "" });
   const [costSaving, setCostSaving] = useState(false);
+  const [editingCostId, setEditingCostId] = useState(null);
+  const costComposerRef = useRef(null);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
   const [rateLoading, setRateLoading] = useState(false);
   const [settlementSaving, setSettlementSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -510,6 +515,9 @@ export default function TripPage() {
   const geocodingRef = useRef(new Set());
   const destinationPhotos = useDestinationPhotos(displayGroupName(trip?.name));
   const inviteToken = searchParams.get("invite");
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const pullStartRef = useRef(null);
 
   useEffect(() => {
     const requested = searchParams.get("view");
@@ -546,6 +554,7 @@ export default function TripPage() {
     }
     setTrip(tripData);
     setTripDateDraft({ start: tripData?.start_date || "", end: tripData?.end_date || "" });
+    setNameDraft(displayGroupName(tripData?.name));
     if (tripData?.currency && CURRENCIES[tripData.currency]) setCurrency(tripData.currency);
 
     const { data: travelerData } = await supabase.from("travelers").select("*").eq("trip_id", tripId);
@@ -608,6 +617,36 @@ export default function TripPage() {
     }));
     return true;
   }, [tripId, account.user?.id]);
+
+  function handlePullTouchStart(event) {
+    if (refreshing || window.scrollY > 0) {
+      pullStartRef.current = null;
+      return;
+    }
+    pullStartRef.current = event.touches[0].clientY;
+  }
+
+  function handlePullTouchMove(event) {
+    if (pullStartRef.current == null) return;
+    const delta = event.touches[0].clientY - pullStartRef.current;
+    if (delta > 0 && window.scrollY === 0) {
+      setPullDistance(Math.min(delta * 0.5, 88));
+    } else {
+      setPullDistance(0);
+    }
+  }
+
+  async function handlePullTouchEnd() {
+    const shouldRefresh = pullDistance > 60;
+    pullStartRef.current = null;
+    if (shouldRefresh && !refreshing) {
+      setRefreshing(true);
+      setPullDistance(56);
+      await load();
+      setRefreshing(false);
+    }
+    setPullDistance(0);
+  }
 
   useEffect(() => {
     const savedName = localStorage.getItem(`wayfare_name_${tripId}`);
@@ -857,6 +896,25 @@ export default function TripPage() {
     downloadIcs(activity);
   }
 
+  async function updateTripName() {
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      showNotice("Enter a name first.", "error");
+      return;
+    }
+    const newName = isExpenseGroupName(trip?.name) ? `${EXPENSE_GROUP_PREFIX}${trimmed}` : trimmed;
+    if (newName === trip?.name) return;
+    setNameSaving(true);
+    const { error } = await supabase.from("trips").update({ name: newName }).eq("id", tripId);
+    setNameSaving(false);
+    if (error) {
+      showNotice(`Name wasn't saved: ${error.message}`, "error");
+      return;
+    }
+    setTrip((current) => ({ ...current, name: newName }));
+    showNotice("Name updated.");
+  }
+
   async function updateTripDuration(value) {
     const duration_days = Math.max(1, Math.min(30, Number(value) || 1));
     setTrip((current) => ({ ...current, duration_days }));
@@ -1085,8 +1143,7 @@ export default function TripPage() {
       return;
     }
     setCostSaving(true);
-    const { data: expense, error } = await supabase.from("extra_costs").insert({
-      trip_id: tripId,
+    const payload = {
       description: costForm.desc.trim(),
       amount: val,
       paid_by: costForm.paidBy,
@@ -1095,7 +1152,31 @@ export default function TripPage() {
       split_method: costForm.splitMethod,
       notes: costForm.notes.trim() || null,
       receipt_data: costForm.receiptData || null,
-    }).select().single();
+    };
+
+    if (editingCostId) {
+      const { error: updateError } = await supabase.from("extra_costs").update(payload).eq("id", editingCostId);
+      if (updateError) {
+        setCostSaving(false);
+        showNotice(`Expense wasn't updated: ${updateError.message}`, "error");
+        return;
+      }
+      await supabase.from("expense_splits").delete().eq("expense_id", editingCostId);
+      const { error: splitError } = await supabase.from("expense_splits").insert(allocation.rows.map((row) => ({ ...row, expense_id: editingCostId })));
+      if (splitError) {
+        setCostSaving(false);
+        showNotice(`Expense split wasn't saved: ${splitError.message}`, "error");
+        return;
+      }
+      setCostSaving(false);
+      setEditingCostId(null);
+      setCostForm({ desc: "", amt: "", paidBy: costForm.paidBy, currency, exchangeRate: "1", splitMethod: "equal", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
+      showNotice("Expense updated.");
+      await load();
+      return;
+    }
+
+    const { data: expense, error } = await supabase.from("extra_costs").insert({ trip_id: tripId, ...payload }).select().single();
     if (error || !expense) {
       setCostSaving(false);
       showNotice(`Expense wasn't added: ${error?.message || "please try again"}`, "error");
@@ -1112,6 +1193,32 @@ export default function TripPage() {
     setCostForm({ desc: "", amt: "", paidBy: costForm.paidBy, currency, exchangeRate: "1", splitMethod: "equal", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
     showNotice("Expense added with its split.");
     await load();
+  }
+
+  function startEditExtraCost(cost) {
+    const splits = expenseSplits[cost.id] || [];
+    const participantIds = splits.length ? splits.map((split) => split.traveler_id) : travelers.map((traveler) => traveler.id);
+    const splitValues = {};
+    splits.forEach((split) => { splitValues[split.traveler_id] = split.input_value; });
+    setCostForm({
+      desc: cost.description || "",
+      amt: cost.amount != null ? String(cost.amount) : "",
+      paidBy: cost.paid_by || "",
+      currency: cost.currency || currency,
+      exchangeRate: cost.exchange_rate != null ? String(cost.exchange_rate) : "1",
+      splitMethod: cost.split_method || "equal",
+      participantIds,
+      splitValues,
+      notes: cost.notes || "",
+      receiptData: cost.receipt_data || "",
+    });
+    setEditingCostId(cost.id);
+    setTimeout(() => costComposerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  }
+
+  function cancelEditExtraCost() {
+    setEditingCostId(null);
+    setCostForm({ desc: "", amt: "", paidBy: "", currency, exchangeRate: "1", splitMethod: "equal", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
   }
 
   async function markTransferPaid(transfer) {
@@ -1264,7 +1371,13 @@ export default function TripPage() {
   const suggestionsToShow = SUGGESTIONS.filter((s) => !usedNames.has(s.name.toLowerCase())).slice(0, 6);
 
   return (
-    <div className="trip-shell">
+    <div className="trip-shell" onTouchStart={handlePullTouchStart} onTouchMove={handlePullTouchMove} onTouchEnd={handlePullTouchEnd} onTouchCancel={handlePullTouchEnd}>
+      {(pullDistance > 0 || refreshing) && (
+        <div className="pull-refresh-indicator" style={{ height: refreshing ? 52 : pullDistance }}>
+          <span className={`pull-refresh-spinner${refreshing ? " spinning" : ""}`} style={{ transform: refreshing ? undefined : `rotate(${Math.min(pullDistance / 60, 1) * 180}deg)` }} />
+          <small>{refreshing ? "Refreshing…" : pullDistance > 60 ? "Release to refresh" : "Pull to refresh"}</small>
+        </div>
+      )}
       {activeTab === "plan" ? <div className="trip-hero" style={{ backgroundImage: `url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
         <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><span className="trip-wordmark">PALVOYA</span><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
         <div className="hero-content">
@@ -1299,6 +1412,11 @@ export default function TripPage() {
       {activeTab === "plan" && !expenseOnly && <details className="trip-details-card">
         <summary><div><span className="eyebrow">Trip administration</span><strong>Trip details</strong><small>Dates, duration, currency, and travelers</small></div><b>Edit</b></summary>
         <div className="trip-details-body">
+          <label className="field-label">Trip name</label>
+          <div className="trip-name-edit">
+            <input aria-label="Trip name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Lisbon Weekend" />
+            <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
+          </div>
           <label className="field-label">Trip currency</label>
           <select aria-label="Trip currency" className="settings-select" value={currency} onChange={(event) => { const next = event.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
           <label className="field-label">Trip dates</label>
@@ -1528,6 +1646,7 @@ export default function TripPage() {
               </span>
               <span className="ledger-row-right">
                 <span className="expense-ledger-amounts"><b>{moneyIn(expense.amount, expense.expenseCurrency)}</b>{expense.expenseCurrency !== currency && <small>{money(expense.baseAmount)} total</small>}</span>
+                <button className="icon-btn" title="Edit cost" onClick={() => startEditExtraCost(expense)}><Icon name="edit" style={{ width: 12, height: 12 }} /></button>
                 <button className="icon-btn" title="Remove cost" onClick={() => setDeleteCostTarget(expense)}><Icon name="trash" style={{ width: 12, height: 12 }} /></button>
               </span>
             </div>
@@ -1536,8 +1655,8 @@ export default function TripPage() {
         {activities.filter((a) => a.cost_pp > 0).length === 0 && extraCosts.length === 0 && (
           <div className="ledger-empty">{expenseOnly ? "No expenses yet — add the first shared purchase below." : "No costs logged yet — add one below, or set a cost on an activity above."}</div>
         )}
-        <div className="expense-composer">
-          <div className="expense-composer-head"><div><span className="eyebrow">New shared purchase</span><h3>Add an expense</h3></div><span>Split it your way</span></div>
+        <div className="expense-composer" ref={costComposerRef}>
+          <div className="expense-composer-head"><div><span className="eyebrow">{editingCostId ? "Editing purchase" : "New shared purchase"}</span><h3>{editingCostId ? "Edit expense" : "Add an expense"}</h3></div>{editingCostId ? <button type="button" className="cancel-edit-link" onClick={cancelEditExtraCost}>Cancel edit</button> : <span>Split it your way</span>}</div>
           <div className="expense-basic-grid">
             <label><span className="field-label">Description</span><input aria-label="Expense description" placeholder="e.g. Supermarket" value={costForm.desc} onChange={(event) => setCostForm({ ...costForm, desc: event.target.value })} /></label>
             <label><span className="field-label">Who paid?</span><select className="paid-select" value={costForm.paidBy} onChange={(event) => setCostForm({ ...costForm, paidBy: event.target.value })}><option value="">Choose payer</option>{travelers.map((traveler) => <option key={traveler.id} value={traveler.id}>{traveler.name}</option>)}</select></label>
@@ -1558,15 +1677,20 @@ export default function TripPage() {
 
           <label className="expense-notes"><span className="field-label">Notes <i>optional</i></span><textarea rows="2" placeholder="What was this for?" value={costForm.notes} onChange={(event) => setCostForm({ ...costForm, notes: event.target.value })} /></label>
           <div className="receipt-picker"><label><span>{costForm.receiptData ? "✓ Receipt attached" : "＋ Add receipt photo"}</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseReceipt(event.target.files?.[0])} /></label>{costForm.receiptData && <><img src={costForm.receiptData} alt="Receipt preview" /><button type="button" onClick={() => setCostForm({ ...costForm, receiptData: "" })}>Remove</button></>}</div>
-          <button className="add-expense-button" onClick={addExtraCost} disabled={costSaving}>{costSaving ? "Saving expense…" : `Add expense${Number(costForm.amt) > 0 ? ` · ${moneyIn(costForm.amt, costForm.currency)}` : ""}`}</button>
+          <button className="add-expense-button" onClick={addExtraCost} disabled={costSaving}>{costSaving ? (editingCostId ? "Saving changes…" : "Saving expense…") : editingCostId ? `Save changes${Number(costForm.amt) > 0 ? ` · ${moneyIn(costForm.amt, costForm.currency)}` : ""}` : `Add expense${Number(costForm.amt) > 0 ? ` · ${moneyIn(costForm.amt, costForm.currency)}` : ""}`}</button>
         </div>
       </div>
       </section>
 
       <section className={activeTab === "settle" ? "tab-panel" : "tab-panel is-hidden"}>
       {expenseOnly && <details className="trip-details-card expense-group-details">
-        <summary><div><span className="eyebrow">Group administration</span><strong>Group details</strong><small>Currency and members</small></div><b>Edit</b></summary>
+        <summary><div><span className="eyebrow">Group administration</span><strong>Group details</strong><small>Name, currency, and members</small></div><b>Edit</b></summary>
         <div className="trip-details-body">
+          <label className="field-label">Group name</label>
+          <div className="trip-name-edit">
+            <input aria-label="Group name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Roommates" />
+            <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
+          </div>
           <label className="field-label">Group currency</label>
           <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => { const next = event.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
           <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
