@@ -17,6 +17,10 @@ button:disabled { cursor: default; }
 .journey-welcome h1 { font-family: Inter, sans-serif; font-size: clamp(34px, 9vw, 46px); line-height: 1.08; letter-spacing: -.055em; font-weight: 600; margin-top: 16px; }
 .journey-welcome h1 span { color: #426b88; }
 .journey-welcome p { color: #67717c; font-size: 14px; line-height: 1.6; max-width: 340px; margin: 14px 0 20px; }
+.journey-welcome-compact { padding: 24px 0 26px; margin-top: 8px; border-top: 1px solid #e3e6e9; }
+.journey-welcome-compact h2 { font-family: Inter, sans-serif; font-size: 21px; line-height: 1.2; letter-spacing: -.03em; font-weight: 600; margin-top: 10px; }
+.journey-welcome-compact p { margin: 8px 0 16px; }
+.journey-welcome-compact .new-journey-button { padding: 12px 18px; font-size: 13px; }
 .new-journey-button { display: flex; align-items: center; gap: 10px; background: var(--ink); color: #fff; border: 0; border-radius: 16px; padding: 15px 20px; font-size: 14px; font-weight: 600; box-shadow: 0 8px 18px #243b4e15; }
 .new-journey-button span:first-child { color: var(--accent-lime); font-size: 22px; line-height: 16px; }
 .new-journey-button span:last-child { margin-left: 36px; color: var(--accent-lime); }

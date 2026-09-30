@@ -365,6 +365,87 @@ export default function Home() {
     </main>
   );
 
+  const filteredPlanTrips = planTrips.filter((trip) => trip.name.toLowerCase().includes(tripSearch.trim().toLowerCase()));
+
+  const savedTripsBlock = planTrips.length > 0 && (
+    <div className="saved-trips">
+      <div className="section-title-row"><h2>Your next chapters</h2><span>{planTrips.length} trips</span></div>
+      <input className="trip-search" aria-label="Search your trips" placeholder="Find a trip…" value={tripSearch} onChange={(event) => setTripSearch(event.target.value)} />
+      {filteredPlanTrips.map((trip) => (
+        <div className="saved-trip-row" key={trip.id}>
+          <button className="saved-trip-card" onClick={() => router.push(`/trip/${trip.id}`)}>
+            <DestinationCover name={trip.name} />
+            <div className="destination-card-copy"><small>{tripDateLabel(trip)}</small><strong>{trip.name}</strong><span>Plan it together <b aria-hidden="true">↗</b></span></div>
+          </button>
+          <button className="plan-delete-button" aria-label={`Delete ${trip.name} plan`} title="Delete plan" onClick={() => setDeletePlanTarget(trip)}>×</button>
+        </div>
+      ))}
+      {tripSearch && !filteredPlanTrips.length && <p className="search-empty" role="status">No trips match “{tripSearch}”. Try another name.</p>}
+    </div>
+  );
+
+  const newTripPromptBlock = (
+    <div className={`app-welcome journey-welcome${planTrips.length > 0 ? " journey-welcome-compact" : ""}`}>
+      <div className="eyebrow">Hey {yourName.trim().split(/\s+/)[0] || "traveler"}, where next?</div>
+      {planTrips.length > 0 ? <h2>Planning another one?</h2> : <h1>Good trips.<br /><span>Great company.</span></h1>}
+      <p>{planTrips.length > 0 ? "Start a new plan whenever you're ready." : "A little planning. A lot to look forward to."}</p>
+      <button className="new-journey-button" onClick={openCreate}><span aria-hidden="true">＋</span> New trip <span aria-hidden="true">↗</span></button>
+    </div>
+  );
+
+  const journeyShortcutsBlock = (
+    <div className="journey-shortcuts"><button onClick={() => navigateView("settle")}><span className="shortcut-icon"><NavIcon name="settle" /></span><span><strong>Split the good times</strong><small>Dinners, trips & everything shared</small></span><span aria-hidden="true">↗</span></button></div>
+  );
+
+  const quickCreateBlock = (
+    <section className="quick-create-card" ref={createRef} hidden={!createOpen}>
+      <button type="button" className="close-create" aria-label="Close new trip form" onClick={() => setCreateOpen(false)}>×</button>
+      <div className="eyebrow">New plan</div>
+      <h2>Create a trip</h2>
+      <label className="field-label">Trip title</label>
+      <input placeholder="e.g. Barcelona with friends" value={tripName} onChange={(e) => setTripName(e.target.value)} />
+      <div className="trip-date-card">
+        <div className="trip-date-heading"><div><strong>Trip dates</strong><small>Optional — you can decide later</small></div><span>Calendar</span></div>
+        <div className="trip-date-grid">
+          <label><span>Starts</span><input aria-label="Trip start date" type="date" value={tripStartDate} onChange={(event) => changeTripStartDate(event.target.value)} /></label>
+          <label><span>Ends</span><input aria-label="Trip end date" type="date" min={tripStartDate || undefined} value={tripEndDate} onChange={(event) => changeTripEndDate(event.target.value)} disabled={!tripStartDate} /></label>
+        </div>
+      </div>
+      <label className="field-label">How many days?</label>
+      <div className="duration-input"><button type="button" onClick={() => changeTripDuration(Number(tripDays) - 1)}>−</button><input aria-label="Trip duration in days" type="number" min="1" max="30" value={tripDays} onChange={(event) => changeTripDuration(event.target.value)} /><span>days</span><button type="button" onClick={() => changeTripDuration(Number(tripDays) + 1)}>＋</button></div>
+      <label className="field-label">Your name</label>
+      <input placeholder="So friends know it's you" value={yourName} onChange={(e) => setYourName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createTrip()} />
+      {error && <p className="form-error">{error}</p>}
+      <button onClick={createTrip} disabled={loading}>{loading ? "Creating…" : "Create plan →"}</button>
+    </section>
+  );
+
+  const settleChoiceCardBlock = (
+    <div className="settle-choice-card">
+      <button className="settle-new-group" onClick={() => setGroupFormOpen((open) => !open)}>
+        <span className="settle-choice-icon">＋</span><span><strong>New expense group</strong><small>Groceries, rent, dinners, roommates, or anything shared</small></span><b>{groupFormOpen ? "×" : "›"}</b>
+      </button>
+      {groupFormOpen && <div className="expense-group-form">
+        <div className="expense-group-examples"><span>Groceries</span><span>Apartment</span><span>Weekend dinner</span></div>
+        <label className="field-label">Group name</label>
+        <input placeholder="e.g. Apartment expenses" value={groupName} onChange={(event) => { setGroupName(event.target.value); setSettleError(""); }} />
+        <div className="expense-form-grid">
+          <div><label className="field-label">Your name</label><input placeholder="So everyone knows it's you" value={yourName} onChange={(event) => setYourName(event.target.value)} /></div>
+          <div><label className="field-label">Currency</label><select value={groupCurrency} onChange={(event) => setGroupCurrency(event.target.value)}>{CURRENCY_OPTIONS.map((code) => <option key={code} value={code}>{code}</option>)}</select></div>
+        </div>
+        {settleError && <p className="form-error">{settleError}</p>}
+        <button className="create-expense-group" onClick={createExpenseGroup} disabled={groupCreating}>{groupCreating ? "Creating…" : "Create group and add expenses →"}</button>
+      </div>}
+    </div>
+  );
+
+  const settleListsBlock = (
+    <div className="settle-lists">
+      {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <div className="saved-trip-row settle-row-wrap" key={group.id}><button className="feed-row settle-destination-row" onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon">⌂</span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div><b>›</b></button><button className="plan-delete-button" aria-label={`Delete ${displayTripName(group)} group`} title="Delete group" onClick={() => setDeletePlanTarget(group)}>×</button></div>)}</>}
+      {planTrips.length > 0 && <><div className="section-title-row settle-section-title"><h2>Trips</h2><span>{planTrips.length}</span></div>{planTrips.map((trip) => <button className="feed-row settle-destination-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon">✈</span><div><small className="row-kicker">TRIP EXPENSES</small><strong>{trip.name}</strong><small>Use during the trip or settle afterward</small></div><b>›</b></button>)}</>}
+    </div>
+  );
+
   return (
     <main className="mobile-app-home">
       <header className="app-header">
@@ -376,68 +457,36 @@ export default function Home() {
         {activeView !== "plans" && <button type="button" className="home-view-back" onClick={() => navigateView("plans")}><span aria-hidden="true">←</span> Back to plans</button>}
         {activeView === "plans" && (
           <section className="plans-home-view">
-            <div className="app-welcome journey-welcome"><div className="eyebrow">Hey {yourName.trim().split(/\s+/)[0] || "traveler"}, where next?</div><h1>Good trips.<br /><span>Great company.</span></h1><p>A little planning. A lot to look forward to.</p><button className="new-journey-button" onClick={openCreate}><span aria-hidden="true">＋</span> New trip <span aria-hidden="true">↗</span></button></div>
-            <div className="journey-shortcuts"><button onClick={() => navigateView("settle")}><span className="shortcut-icon"><NavIcon name="settle" /></span><span><strong>Split the good times</strong><small>Dinners, trips & everything shared</small></span><span aria-hidden="true">↗</span></button></div>
-            {planTrips.length > 0 && <div className="saved-trips">
-              <div className="section-title-row"><h2>Your next chapters</h2><span>{planTrips.length} trips</span></div>
-              <input className="trip-search" aria-label="Search your trips" placeholder="Find a trip…" value={tripSearch} onChange={(event) => setTripSearch(event.target.value)} />
-              {planTrips.filter((trip) => trip.name.toLowerCase().includes(tripSearch.trim().toLowerCase())).map((trip) => (
-                <div className="saved-trip-row" key={trip.id}>
-                  <button className="saved-trip-card" onClick={() => router.push(`/trip/${trip.id}`)}>
-                    <DestinationCover name={trip.name} />
-                    <div className="destination-card-copy"><small>{tripDateLabel(trip)}</small><strong>{trip.name}</strong><span>Plan it together <b aria-hidden="true">↗</b></span></div>
-                  </button>
-                  <button className="plan-delete-button" aria-label={`Delete ${trip.name} plan`} title="Delete plan" onClick={() => setDeletePlanTarget(trip)}>×</button>
-                </div>
-              ))}
-              {tripSearch && !planTrips.some((trip) => trip.name.toLowerCase().includes(tripSearch.trim().toLowerCase())) && <p className="search-empty" role="status">No trips match “{tripSearch}”. Try another name.</p>}
-            </div>}
-            <section className="quick-create-card" ref={createRef} hidden={!createOpen}>
-              <button type="button" className="close-create" aria-label="Close new trip form" onClick={() => setCreateOpen(false)}>×</button>
-              <div className="eyebrow">New plan</div>
-              <h2>Create a trip</h2>
-              <label className="field-label">Trip title</label>
-              <input placeholder="e.g. Barcelona with friends" value={tripName} onChange={(e) => setTripName(e.target.value)} />
-              <div className="trip-date-card">
-                <div className="trip-date-heading"><div><strong>Trip dates</strong><small>Optional — you can decide later</small></div><span>Calendar</span></div>
-                <div className="trip-date-grid">
-                  <label><span>Starts</span><input aria-label="Trip start date" type="date" value={tripStartDate} onChange={(event) => changeTripStartDate(event.target.value)} /></label>
-                  <label><span>Ends</span><input aria-label="Trip end date" type="date" min={tripStartDate || undefined} value={tripEndDate} onChange={(event) => changeTripEndDate(event.target.value)} disabled={!tripStartDate} /></label>
-                </div>
-              </div>
-              <label className="field-label">How many days?</label>
-              <div className="duration-input"><button type="button" onClick={() => changeTripDuration(Number(tripDays) - 1)}>−</button><input aria-label="Trip duration in days" type="number" min="1" max="30" value={tripDays} onChange={(event) => changeTripDuration(event.target.value)} /><span>days</span><button type="button" onClick={() => changeTripDuration(Number(tripDays) + 1)}>＋</button></div>
-              <label className="field-label">Your name</label>
-              <input placeholder="So friends know it's you" value={yourName} onChange={(e) => setYourName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createTrip()} />
-              {error && <p className="form-error">{error}</p>}
-              <button onClick={createTrip} disabled={loading}>{loading ? "Creating…" : "Create plan →"}</button>
-            </section>
+            {planTrips.length > 0 ? (
+              <>
+                {savedTripsBlock}
+                {newTripPromptBlock}
+                {journeyShortcutsBlock}
+              </>
+            ) : (
+              <>
+                {newTripPromptBlock}
+                {journeyShortcutsBlock}
+              </>
+            )}
+            {quickCreateBlock}
           </section>
         )}
 
         {activeView === "settle" && <section className="simple-app-view settle-home-view">
           <div className="eyebrow">Shared expenses</div><h1>Settle up</h1><p className="view-intro">Use a trip, or create an everyday group without planning anything first.</p>
-          <div className="settle-choice-card">
-            <button className="settle-new-group" onClick={() => setGroupFormOpen((open) => !open)}>
-              <span className="settle-choice-icon">＋</span><span><strong>New expense group</strong><small>Groceries, rent, dinners, roommates, or anything shared</small></span><b>{groupFormOpen ? "×" : "›"}</b>
-            </button>
-            {groupFormOpen && <div className="expense-group-form">
-              <div className="expense-group-examples"><span>Groceries</span><span>Apartment</span><span>Weekend dinner</span></div>
-              <label className="field-label">Group name</label>
-              <input placeholder="e.g. Apartment expenses" value={groupName} onChange={(event) => { setGroupName(event.target.value); setSettleError(""); }} />
-              <div className="expense-form-grid">
-                <div><label className="field-label">Your name</label><input placeholder="So everyone knows it's you" value={yourName} onChange={(event) => setYourName(event.target.value)} /></div>
-                <div><label className="field-label">Currency</label><select value={groupCurrency} onChange={(event) => setGroupCurrency(event.target.value)}>{CURRENCY_OPTIONS.map((code) => <option key={code} value={code}>{code}</option>)}</select></div>
-              </div>
-              {settleError && <p className="form-error">{settleError}</p>}
-              <button className="create-expense-group" onClick={createExpenseGroup} disabled={groupCreating}>{groupCreating ? "Creating…" : "Create group and add expenses →"}</button>
-            </div>}
-          </div>
 
-          {(expenseGroups.length > 0 || planTrips.length > 0) ? <div className="settle-lists">
-            {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <div className="saved-trip-row settle-row-wrap" key={group.id}><button className="feed-row settle-destination-row" onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon">⌂</span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div><b>›</b></button><button className="plan-delete-button" aria-label={`Delete ${displayTripName(group)} group`} title="Delete group" onClick={() => setDeletePlanTarget(group)}>×</button></div>)}</>}
-            {planTrips.length > 0 && <><div className="section-title-row settle-section-title"><h2>Trips</h2><span>{planTrips.length}</span></div>{planTrips.map((trip) => <button className="feed-row settle-destination-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon">✈</span><div><small className="row-kicker">TRIP EXPENSES</small><strong>{trip.name}</strong><small>Use during the trip or settle afterward</small></div><b>›</b></button>)}</>}
-          </div> : <EmptyView title="Nothing to settle yet" text="Create an expense group above, or make a trip from Plans." />}
+          {(expenseGroups.length > 0 || planTrips.length > 0) ? (
+            <>
+              {settleListsBlock}
+              {settleChoiceCardBlock}
+            </>
+          ) : (
+            <>
+              {settleChoiceCardBlock}
+              <EmptyView title="Nothing to settle yet" text="Create an expense group above, or make a trip from Plans." />
+            </>
+          )}
         </section>}
 
         {activeView === "updates" && <section className="simple-app-view">
