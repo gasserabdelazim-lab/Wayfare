@@ -346,7 +346,7 @@ button { font-family: inherit; }
 .city-tokyo { background-image: url('https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=700&q=75'); }
 .city-dubai { background-image: url('https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=700&q=75'); }
 
-.trip-shell { min-height: 100vh; background: #f8f7f3; }
+.trip-shell { min-height: 100vh; min-height: 100dvh; background: #f8f7f3; }
 .trip-hero { min-height: 430px; background-size: cover; background-position: center; color: white; display: flex; flex-direction: column; }
 .hero-nav { position: relative; width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 24px 0; display: flex; justify-content: space-between; align-items: center; }
 .trip-wordmark { position: absolute; left: 50%; transform: translateX(-50%); color: white; font: 800 14px 'IBM Plex Mono', monospace; letter-spacing: .17em; text-shadow: 0 2px 14px rgba(0,0,0,.3); }
@@ -400,7 +400,7 @@ button { font-family: inherit; }
 }
 
 /* ---------- Mobile app shell ---------- */
-.mobile-app-home { min-height: 100vh; background: #f8f7f3; padding-bottom: 104px; }
+.mobile-app-home { min-height: 100vh; min-height: 100dvh; background: #f8f7f3; padding-bottom: 104px; }
 .app-header { height: 88px; position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; max-width: 920px; margin: 0 auto; padding: 0 24px; background: rgba(248,247,243,.96); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(28,43,46,.08); }
 .app-header .brand-mark { color: var(--teal-deep); font-size: 24px; font-weight: 800; line-height: 1; letter-spacing: .16em; }
 .app-header p { margin: 7px 0 0; font-size: 11px; letter-spacing: .02em; opacity: .56; }
@@ -431,6 +431,8 @@ button { font-family: inherit; }
 .saved-trip-card span { color: var(--teal); font-size: 12px; }
 .saved-trip-row { position: relative; }
 .saved-trip-row .saved-trip-card { padding-right: 52px; }
+.saved-trip-row.settle-row-wrap { margin-bottom: 10px; }
+.saved-trip-row .settle-destination-row { padding-right: 52px; margin-bottom: 0; }
 .plan-delete-button { position: absolute; z-index: 3; top: 12px; right: 12px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #eedbd3; border-radius: 50%; background: rgba(255,255,255,.94); color: var(--coral); font-size: 21px; line-height: 1; cursor: pointer; box-shadow: 0 5px 18px rgba(64,38,28,.11); }
 .plan-delete-button:hover { background: #f8e8e0; }
 .destination-cover-collage { display: grid; grid-template-columns: 1.65fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; overflow: hidden; background: #dfe7e3; }
@@ -490,7 +492,7 @@ button { font-family: inherit; }
 .profile-fields textarea, .profile-fields select { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #faf9f6; padding: 12px; color: var(--ink); font: 14px Inter, sans-serif; resize: vertical; }
 .save-profile-button { width: 100%; min-height: 46px; margin-top: 16px; border: 0; border-radius: 11px; background: var(--teal); color: white; font-weight: 700; cursor: pointer; }
 .profile-card .profile-privacy-note { margin: 10px 0 0; font-size: 10.5px; }
-.mobile-bottom-nav { position: fixed; z-index: 50; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(520px, calc(100% - 24px)); display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px; background: rgba(18,36,36,.96); border: 1px solid rgba(255,255,255,.12); border-radius: 22px; box-shadow: 0 18px 50px rgba(10,27,27,.28); backdrop-filter: blur(18px); }
+.mobile-bottom-nav { position: fixed; z-index: 50; left: 50%; bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 10px)); transform: translateX(-50%) translateZ(0); -webkit-transform: translateX(-50%) translateZ(0); will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; width: min(520px, calc(100% - 24px)); display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px; background: rgba(18,36,36,.96); border: 1px solid rgba(255,255,255,.12); border-radius: 22px; box-shadow: 0 18px 50px rgba(10,27,27,.28); backdrop-filter: blur(18px); }
 .bottom-nav-item { min-width: 0; border: 0; background: transparent; color: rgba(255,255,255,.58); text-decoration: none; padding: 7px 4px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
 .bottom-nav-item > svg { width: 21px; height: 21px; display: block; }
 .bottom-nav-item small { font-size: 10px; }
