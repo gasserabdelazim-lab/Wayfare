@@ -293,7 +293,7 @@ export default function Home() {
     const { error: deleteError } = await supabase.from("trips").delete().eq("id", target.id);
     setDeletingPlan(false);
     if (deleteError) {
-      setActionNotice(`Couldn't delete ${target.name}: ${deleteError.message}`);
+      setActionNotice(`Couldn't delete ${displayTripName(target)}: ${deleteError.message}`);
       return;
     }
     localStorage.removeItem(`wayfare_name_${target.id}`);
@@ -302,7 +302,7 @@ export default function Home() {
     setTrips((current) => current.filter((trip) => trip.id !== target.id));
     setRecentActivities((current) => current.filter((activity) => activity.trip_id !== target.id));
     setDeletePlanTarget(null);
-    setActionNotice(`${target.name} was deleted.`);
+    setActionNotice(`${displayTripName(target)} was deleted.`);
     setTimeout(() => setActionNotice(""), 4200);
   }
 
@@ -435,7 +435,7 @@ export default function Home() {
           </div>
 
           {(expenseGroups.length > 0 || planTrips.length > 0) ? <div className="settle-lists">
-            {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <button className="feed-row settle-destination-row" key={group.id} onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon">⌂</span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div><b>›</b></button>)}</>}
+            {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <div className="saved-trip-row settle-row-wrap" key={group.id}><button className="feed-row settle-destination-row" onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon">⌂</span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div><b>›</b></button><button className="plan-delete-button" aria-label={`Delete ${displayTripName(group)} group`} title="Delete group" onClick={() => setDeletePlanTarget(group)}>×</button></div>)}</>}
             {planTrips.length > 0 && <><div className="section-title-row settle-section-title"><h2>Trips</h2><span>{planTrips.length}</span></div>{planTrips.map((trip) => <button className="feed-row settle-destination-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon">✈</span><div><small className="row-kicker">TRIP EXPENSES</small><strong>{trip.name}</strong><small>Use during the trip or settle afterward</small></div><b>›</b></button>)}</>}
           </div> : <EmptyView title="Nothing to settle yet" text="Create an expense group above, or make a trip from Plans." />}
         </section>}
@@ -474,7 +474,7 @@ export default function Home() {
         </section>}
       </div>
 
-      {deletePlanTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deletingPlan && setDeletePlanTarget(null)}><div className="confirm-sheet plan-delete-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-plan-title" onClick={(event) => event.stopPropagation()}><div className="confirm-icon">×</div><h3 id="delete-plan-title">Delete “{deletePlanTarget.name}”?</h3><p>This permanently removes the plan, its activities, votes, comments, and expenses for everyone with the link.</p><div className="confirm-actions"><button onClick={() => setDeletePlanTarget(null)} disabled={deletingPlan}>Cancel</button><button className="danger-button" onClick={deletePlan} disabled={deletingPlan}>{deletingPlan ? "Deleting…" : "Delete plan"}</button></div></div></div>}
+      {deletePlanTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deletingPlan && setDeletePlanTarget(null)}><div className="confirm-sheet plan-delete-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-plan-title" onClick={(event) => event.stopPropagation()}><div className="confirm-icon">×</div><h3 id="delete-plan-title">Delete “{displayTripName(deletePlanTarget)}”?</h3><p>{isExpenseGroup(deletePlanTarget) ? "This permanently removes the group and its shared expenses for everyone with the link." : "This permanently removes the plan, its activities, votes, comments, and expenses for everyone with the link."}</p><div className="confirm-actions"><button onClick={() => setDeletePlanTarget(null)} disabled={deletingPlan}>Cancel</button><button className="danger-button" onClick={deletePlan} disabled={deletingPlan}>{deletingPlan ? "Deleting…" : isExpenseGroup(deletePlanTarget) ? "Delete group" : "Delete plan"}</button></div></div></div>}
       {actionNotice && <div className="action-notice" role="status">{actionNotice}</div>}
       <UpdateToast notification={notifications.toast} onOpen={() => { notifications.dismiss(); navigateView("updates"); }} onDismiss={notifications.dismiss} />
 
