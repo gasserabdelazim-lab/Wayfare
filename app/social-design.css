@@ -208,7 +208,8 @@ body { background:#f4faff; }
 .new-journey-button, .poll-create-button, .poll-add, .save-profile-button, .primary-add,
 .quick-create-card > button:not(.close-create), .create-expense-group, .add-expense-button,
 .fab, .share-primary-button, .account-form > button, .account-secondary,
-.invite-link-row button, .member-add-row button, .book-action {
+.invite-link-row button, .member-add-row button, .book-action, .header-add-button,
+.friend-add-row button, .friend-row-actions > button:not(.friend-decline), .friend-quick-add-row > button {
   background:var(--action-bg); color:var(--action-ink); border:1px solid #c4e3f6; box-shadow:0 4px 14px #396c900a;
 }
 .new-journey-button span:first-child, .new-journey-button span:last-child { color:var(--action-ink); }
@@ -253,7 +254,8 @@ body { background:#e8ede7; }
 .new-journey-button, .poll-create-button, .poll-add, .save-profile-button, .primary-add,
 .quick-create-card > button:not(.close-create), .create-expense-group, .add-expense-button,
 .fab, .share-primary-button, .account-form > button, .account-secondary,
-.invite-link-row button, .member-add-row button, .book-action { border-color:#216557; box-shadow:0 4px 14px #173e350d; }
+.invite-link-row button, .member-add-row button, .book-action, .header-add-button,
+.friend-add-row button, .friend-row-actions > button:not(.friend-decline), .friend-quick-add-row > button { border-color:#216557; box-shadow:0 4px 14px #173e350d; }
 .new-journey-button span:first-child, .new-journey-button span:last-child { color:#dcf590; }
 .journey-welcome h1 span, .personal-back, .poll-view, .profile-stats strong { color:#216557; }
 .journey-shortcuts > button, .polls-intro { background:#e5eee7; color:#234d3f; border-color:#d3e0d6; }

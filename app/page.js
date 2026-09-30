@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import NavIcon from "../components/NavIcon";
@@ -117,6 +117,14 @@ export default function Home() {
     setCreateOpen(true);
     requestAnimationFrame(() => createRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
+  function openGroupForm() {
+    setGroupFormOpen(true);
+    requestAnimationFrame(() => groupFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+  function handleHeaderAdd() {
+    if (activeView === "settle") openGroupForm();
+    else openCreate();
+  }
   const [activeView, setActiveView] = useState("plans");
   const notifications = useUpdateNotifications(account.user?.id, activeView === "updates");
   const [trips, setTrips] = useState([]);
@@ -133,6 +141,13 @@ export default function Home() {
   const [deletePlanTarget, setDeletePlanTarget] = useState(null);
   const [deletingPlan, setDeletingPlan] = useState(false);
   const [actionNotice, setActionNotice] = useState("");
+  const groupFormRef = useRef(null);
+  const [friends, setFriends] = useState([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendEmail, setFriendEmail] = useState("");
+  const [friendError, setFriendError] = useState("");
+  const [friendSending, setFriendSending] = useState(false);
+  const [friendActionId, setFriendActionId] = useState(null);
 
   useEffect(() => {
     const requestedView = new URLSearchParams(window.location.search).get("view");
@@ -205,6 +220,65 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [account.loading, account.user?.id]);
 
+  const loadFriends = useCallback(async () => {
+    if (!account.user) {
+      setFriends([]);
+      return;
+    }
+    setFriendsLoading(true);
+    const { data, error } = await supabase.rpc("list_friends");
+    setFriendsLoading(false);
+    if (!error) setFriends(data || []);
+  }, [account.user?.id]);
+
+  useEffect(() => { loadFriends(); }, [loadFriends]);
+
+  async function sendFriendRequest() {
+    const email = friendEmail.trim();
+    if (!email) {
+      setFriendError("Enter their email first.");
+      return;
+    }
+    setFriendSending(true);
+    setFriendError("");
+    const { error } = await supabase.rpc("send_friend_request", { friend_email: email });
+    setFriendSending(false);
+    if (error) {
+      setFriendError(error.message || "Couldn't send that request.");
+      return;
+    }
+    setFriendEmail("");
+    setActionNotice("Friend request sent.");
+    setTimeout(() => setActionNotice(""), 3200);
+    await loadFriends();
+  }
+
+  async function respondFriendRequest(friendshipId, accept) {
+    setFriendActionId(friendshipId);
+    const { error } = await supabase.rpc("respond_friend_request", { friendship_id: friendshipId, accept });
+    setFriendActionId(null);
+    if (error) {
+      setActionNotice(`Couldn't update that request: ${error.message}`);
+      setTimeout(() => setActionNotice(""), 3200);
+      return;
+    }
+    await loadFriends();
+  }
+
+  async function removeFriend(friendshipId) {
+    setFriendActionId(friendshipId);
+    const { error } = await supabase.from("friendships").delete().eq("id", friendshipId);
+    setFriendActionId(null);
+    if (error) {
+      setActionNotice(`Couldn't remove: ${error.message}`);
+      setTimeout(() => setActionNotice(""), 3200);
+      return;
+    }
+    setActionNotice("Friend removed.");
+    setTimeout(() => setActionNotice(""), 3200);
+    await loadFriends();
+  }
+
   useEffect(() => {
     if (!account.user || account.profile || yourName.trim()) return;
     const metadata = account.user.user_metadata || {};
@@ -215,6 +289,9 @@ export default function Home() {
   const tripById = useMemo(() => Object.fromEntries(trips.map((trip) => [trip.id, trip])), [trips]);
   const planTrips = useMemo(() => trips.filter((trip) => !isExpenseGroup(trip)), [trips]);
   const expenseGroups = useMemo(() => trips.filter(isExpenseGroup), [trips]);
+  const acceptedFriends = useMemo(() => friends.filter((friend) => friend.status === "accepted"), [friends]);
+  const incomingFriendRequests = useMemo(() => friends.filter((friend) => friend.status === "pending" && friend.direction === "incoming"), [friends]);
+  const outgoingFriendRequests = useMemo(() => friends.filter((friend) => friend.status === "pending" && friend.direction === "outgoing"), [friends]);
 
   function changeTripDuration(value) {
     const nextDays = Math.max(1, Math.min(30, Number(value) || 1));
@@ -384,12 +461,11 @@ export default function Home() {
     </div>
   );
 
-  const newTripPromptBlock = (
-    <div className={`app-welcome journey-welcome${planTrips.length > 0 ? " journey-welcome-compact" : ""}`}>
+  const emptyPlansHeroBlock = (
+    <div className="app-welcome journey-welcome">
       <div className="eyebrow">Hey {yourName.trim().split(/\s+/)[0] || "traveler"}, where next?</div>
-      {planTrips.length > 0 ? <h2>Planning another one?</h2> : <h1>Good trips.<br /><span>Great company.</span></h1>}
-      <p>{planTrips.length > 0 ? "Start a new plan whenever you're ready." : "A little planning. A lot to look forward to."}</p>
-      <button className="new-journey-button" onClick={openCreate}><span aria-hidden="true">＋</span> New trip <span aria-hidden="true">↗</span></button>
+      <h1>Good trips.<br /><span>Great company.</span></h1>
+      <p>A little planning. A lot to look forward to. Tap the + up top to start your first trip.</p>
     </div>
   );
 
@@ -420,23 +496,21 @@ export default function Home() {
     </section>
   );
 
-  const settleChoiceCardBlock = (
-    <div className="settle-choice-card">
-      <button className="settle-new-group" onClick={() => setGroupFormOpen((open) => !open)}>
-        <span className="settle-choice-icon">＋</span><span><strong>New expense group</strong><small>Groceries, rent, dinners, roommates, or anything shared</small></span><b>{groupFormOpen ? "×" : "›"}</b>
-      </button>
-      {groupFormOpen && <div className="expense-group-form">
-        <div className="expense-group-examples"><span>Groceries</span><span>Apartment</span><span>Weekend dinner</span></div>
-        <label className="field-label">Group name</label>
-        <input placeholder="e.g. Apartment expenses" value={groupName} onChange={(event) => { setGroupName(event.target.value); setSettleError(""); }} />
-        <div className="expense-form-grid">
-          <div><label className="field-label">Your name</label><input placeholder="So everyone knows it's you" value={yourName} onChange={(event) => setYourName(event.target.value)} /></div>
-          <div><label className="field-label">Currency</label><select value={groupCurrency} onChange={(event) => setGroupCurrency(event.target.value)}>{CURRENCY_OPTIONS.map((code) => <option key={code} value={code}>{code}</option>)}</select></div>
-        </div>
-        {settleError && <p className="form-error">{settleError}</p>}
-        <button className="create-expense-group" onClick={createExpenseGroup} disabled={groupCreating}>{groupCreating ? "Creating…" : "Create group and add expenses →"}</button>
-      </div>}
-    </div>
+  const groupFormCard = (
+    <section className="quick-create-card settle-quick-create" ref={groupFormRef} hidden={!groupFormOpen}>
+      <button type="button" className="close-create" aria-label="Close new group form" onClick={() => setGroupFormOpen(false)}>×</button>
+      <div className="eyebrow">New group</div>
+      <h2>Create an expense group</h2>
+      <div className="expense-group-examples"><span>Groceries</span><span>Apartment</span><span>Weekend dinner</span></div>
+      <label className="field-label">Group name</label>
+      <input placeholder="e.g. Apartment expenses" value={groupName} onChange={(event) => { setGroupName(event.target.value); setSettleError(""); }} />
+      <div className="expense-form-grid">
+        <div><label className="field-label">Your name</label><input placeholder="So everyone knows it's you" value={yourName} onChange={(event) => setYourName(event.target.value)} /></div>
+        <div><label className="field-label">Currency</label><select value={groupCurrency} onChange={(event) => setGroupCurrency(event.target.value)}>{CURRENCY_OPTIONS.map((code) => <option key={code} value={code}>{code}</option>)}</select></div>
+      </div>
+      {settleError && <p className="form-error">{settleError}</p>}
+      <button className="create-expense-group" onClick={createExpenseGroup} disabled={groupCreating}>{groupCreating ? "Creating…" : "Create group and add expenses →"}</button>
+    </section>
   );
 
   const settleListsBlock = (
@@ -450,43 +524,29 @@ export default function Home() {
     <main className="mobile-app-home">
       <header className="app-header">
         <div><div className="brand-mark dark">PALVOYA</div><p>Plan together. Settle simply.</p></div>
-        <button type="button" className="header-profile-button" aria-label="Open your profile" onClick={() => navigateView("profile")}><AvatarPreview name={yourName} avatar={profileAvatar} /></button>
+        <div className="app-header-actions">
+          {(activeView === "plans" || activeView === "settle") && (
+            <button type="button" className="header-add-button" aria-label={activeView === "settle" ? "New expense group" : "New trip"} onClick={handleHeaderAdd}><span aria-hidden="true">＋</span></button>
+          )}
+          <button type="button" className="header-profile-button" aria-label="Open your profile" onClick={() => navigateView("profile")}><AvatarPreview name={yourName} avatar={profileAvatar} /></button>
+        </div>
       </header>
 
       <div className="app-content">
         {activeView !== "plans" && <button type="button" className="home-view-back" onClick={() => navigateView("plans")}><span aria-hidden="true">←</span> Back to plans</button>}
         {activeView === "plans" && (
           <section className="plans-home-view">
-            {planTrips.length > 0 ? (
-              <>
-                {savedTripsBlock}
-                {newTripPromptBlock}
-                {journeyShortcutsBlock}
-              </>
-            ) : (
-              <>
-                {newTripPromptBlock}
-                {journeyShortcutsBlock}
-              </>
-            )}
+            {planTrips.length > 0 ? savedTripsBlock : emptyPlansHeroBlock}
+            {journeyShortcutsBlock}
             {quickCreateBlock}
           </section>
         )}
 
         {activeView === "settle" && <section className="simple-app-view settle-home-view">
-          <div className="eyebrow">Shared expenses</div><h1>Settle up</h1><p className="view-intro">Use a trip, or create an everyday group without planning anything first.</p>
+          <div className="eyebrow">Shared expenses</div><h1>Settle up</h1><p className="view-intro">Use a trip, or create an everyday group without planning anything first. Tap the + up top to start one.</p>
 
-          {(expenseGroups.length > 0 || planTrips.length > 0) ? (
-            <>
-              {settleListsBlock}
-              {settleChoiceCardBlock}
-            </>
-          ) : (
-            <>
-              {settleChoiceCardBlock}
-              <EmptyView title="Nothing to settle yet" text="Create an expense group above, or make a trip from Plans." />
-            </>
-          )}
+          {(expenseGroups.length > 0 || planTrips.length > 0) ? settleListsBlock : <EmptyView title="Nothing to settle yet" text="Tap the + up top to create an expense group, or make a trip from Plans." />}
+          {groupFormCard}
         </section>}
 
         {activeView === "updates" && <section className="simple-app-view">
@@ -507,6 +567,47 @@ export default function Home() {
             <div><strong>{recentActivities.length}</strong><span>Updates</span></div>
           </div>
           <AccountPanel account={account} displayName={yourName} />
+          <div className="profile-card friends-card">
+            <div className="profile-section-heading"><div><h3>Friends</h3><p>Add a friend once, then drop them straight into any trip or expense group — no invite link needed.</p></div></div>
+            <div className="friend-add-row">
+              <input aria-label="Friend's email" type="email" placeholder="friend@email.com" value={friendEmail} onChange={(event) => { setFriendEmail(event.target.value); setFriendError(""); }} onKeyDown={(event) => event.key === "Enter" && sendFriendRequest()} />
+              <button type="button" onClick={sendFriendRequest} disabled={friendSending}>{friendSending ? "Sending…" : "Add friend"}</button>
+            </div>
+            {friendError && <p className="form-error">{friendError}</p>}
+
+            {incomingFriendRequests.length > 0 && <div className="friend-group">
+              <div className="field-label">Requests</div>
+              {incomingFriendRequests.map((friend) => (
+                <div className="friend-row" key={friend.friendship_id}>
+                  <span><AvatarPreview name={friend.display_name} avatar={friend.avatar} className="profile-bubble" /><b>{friend.display_name || "Someone"}</b></span>
+                  <span className="friend-row-actions">
+                    <button type="button" onClick={() => respondFriendRequest(friend.friendship_id, true)} disabled={friendActionId === friend.friendship_id}>Accept</button>
+                    <button type="button" className="friend-decline" onClick={() => respondFriendRequest(friend.friendship_id, false)} disabled={friendActionId === friend.friendship_id}>Decline</button>
+                  </span>
+                </div>
+              ))}
+            </div>}
+
+            {outgoingFriendRequests.length > 0 && <div className="friend-group">
+              <div className="field-label">Sent</div>
+              {outgoingFriendRequests.map((friend) => (
+                <div className="friend-row" key={friend.friendship_id}>
+                  <span><AvatarPreview name={friend.display_name} avatar={friend.avatar} className="profile-bubble" /><b>{friend.display_name || "Someone"}</b></span>
+                  <span className="friend-row-actions"><small>Pending</small><button type="button" className="friend-decline" onClick={() => removeFriend(friend.friendship_id)} disabled={friendActionId === friend.friendship_id}>Cancel</button></span>
+                </div>
+              ))}
+            </div>}
+
+            <div className="friend-group">
+              <div className="field-label">Your friends{acceptedFriends.length > 0 ? ` (${acceptedFriends.length})` : ""}</div>
+              {friendsLoading && !friends.length ? <p className="group-hint">Loading friends…</p> : acceptedFriends.length > 0 ? acceptedFriends.map((friend) => (
+                <div className="friend-row" key={friend.friendship_id}>
+                  <span><AvatarPreview name={friend.display_name} avatar={friend.avatar} className="profile-bubble" /><b>{friend.display_name || "Someone"}</b></span>
+                  <button type="button" className="friend-decline" onClick={() => removeFriend(friend.friendship_id)} disabled={friendActionId === friend.friendship_id}>Remove</button>
+                </div>
+              )) : <p className="group-hint">No friends yet — add one by email above. They need a Palvoya account first.</p>}
+            </div>
+          </div>
           <div className="profile-card profile-editor-card">
             <div className="profile-section-heading"><div><h3>Photo or avatar</h3><p>Choose what friends see beside your votes and expenses.</p></div></div>
             <div className="avatar-picker">{AVATAR_OPTIONS.map((avatar) => <button type="button" key={avatar} aria-label={`Use ${avatar} avatar`} className={profileAvatar === avatar ? "selected" : ""} onClick={() => setProfileAvatar(avatar)}>{avatar}</button>)}</div>
