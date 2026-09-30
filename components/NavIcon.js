@@ -18,5 +18,8 @@ export default function NavIcon({ name }) {
   if (name === "updates") {
     return <svg {...common}><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 8h18c0-1-3-1-3-8Z"/><path d="M10 20h4"/></svg>;
   }
+  if (name === "back") {
+    return <svg {...common}><path d="M11 5 4 12l7 7"/><path d="M4 12h16"/></svg>;
+  }
   return <svg {...common}><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>;
 }
