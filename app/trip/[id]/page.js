@@ -709,13 +709,13 @@ export default function TripPage() {
     return (account.user && travelers.find((t) => t.user_id === account.user.id)) || travelers.find((t) => t.name.toLowerCase() === (me || "").toLowerCase());
   }
 
-function switchTab(nextTab) {
+  function switchTab(nextTab) {
     setActiveTab(nextTab);
     router.replace(`/trip/${tripId}${nextTab === "plan" ? "" : `?view=${nextTab}`}`, { scroll: false });
     window.scrollTo({ top: 0, behavior: "instant" });
-}
-  
-function showNotice(text, type = "success") {
+  }
+
+  function showNotice(text, type = "success") {
     setActionNotice({ text, type });
     window.setTimeout(() => setActionNotice(null), 3200);
   }
@@ -1658,8 +1658,8 @@ function showNotice(text, type = "success") {
         <Icon name="plus" style={{ width: 19, height: 19 }} /><span>Add activity</span>
       </button>}
       <nav className={`mobile-bottom-nav trip-bottom-nav ${expenseOnly ? "expense-group-nav" : ""}`} aria-label="Trip navigation">
-        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="plans" /><small>Itinerary</small></
-        <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>        <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => switchTab("updates")}><UpdateBadge count={notifications.unread} /><small>Updates</small></button>
+        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="plans" /><small>Itinerary</small></button>
+        <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
         <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => switchTab("updates")}><UpdateBadge count={notifications.unread} /><small>Updates</small></button>
         <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => switchTab("profile")}><NavIcon name="profile" /><small>Profile</small></button>
       </nav>
