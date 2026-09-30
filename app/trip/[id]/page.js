@@ -502,6 +502,8 @@ export default function TripPage() {
   const [planView, setPlanView] = useState("timeline");
   const [mapDay, setMapDay] = useState("All days");
   const [shareOpen, setShareOpen] = useState(false);
+  const [tripFriends, setTripFriends] = useState([]);
+  const [addingFriendId, setAddingFriendId] = useState(null);
   const [memberName, setMemberName] = useState("");
   const [memberSaving, setMemberSaving] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
@@ -861,8 +863,25 @@ export default function TripPage() {
     return nextUrl;
   }
 
+  async function loadTripFriends() {
+    if (!account.user) { setTripFriends([]); return; }
+    const { data, error } = await supabase.rpc("list_friends");
+    if (!error) setTripFriends(data || []);
+  }
+
+  async function addFriendToTrip(friend) {
+    if (addingFriendId) return;
+    setAddingFriendId(friend.friend_id);
+    const { error } = await supabase.rpc("add_friend_to_trip", { target_trip: tripId, friend_user_id: friend.friend_id });
+    setAddingFriendId(null);
+    if (error) return showNotice(`Couldn't add ${friend.display_name}: ${error.message}`, "error");
+    showNotice(`${friend.display_name} was added to ${tripDisplayName}.`);
+    await load();
+  }
+
   async function openSharePanel() {
     setShareOpen(true);
+    await loadTripFriends();
     await ensureInviteLink();
   }
 
@@ -1385,6 +1404,7 @@ export default function TripPage() {
 
   const currentTraveler = myTraveler();
   const canManageMembers = currentTraveler?.role === "owner" || trip?.created_by === account.user?.id || travelers.length === 1;
+  const addableFriends = tripFriends.filter((friend) => friend.status === "accepted" && !travelers.some((traveler) => traveler.user_id === friend.friend_id));
   const usedNames = new Set(activities.map((a) => a.name.toLowerCase()));
   const suggestionsToShow = SUGGESTIONS.filter((s) => !usedNames.has(s.name.toLowerCase())).slice(0, 6);
 
@@ -1807,6 +1827,15 @@ export default function TripPage() {
           <div className="member-manager">
             <div className="member-manager-head"><strong>{expenseOnly ? "Group members" : "Travelers"}</strong><small>{travelers.length} joined</small></div>
             {travelers.map((traveler) => <div className="member-manager-row" key={traveler.id}><span><Avatar name={traveler.name} avatar={traveler.avatar} size={30} /><b>{traveler.name}</b>{traveler.role === "owner" && <small>Owner</small>}</span>{canManageMembers && traveler.id !== currentTraveler?.id && traveler.role !== "owner" && <button type="button" onClick={() => setMemberToRemove(traveler)}>Remove</button>}</div>)}
+            {canManageMembers && addableFriends.length > 0 && <div className="friend-quick-add">
+              <div className="field-label">Add a friend directly</div>
+              {addableFriends.map((friend) => (
+                <div className="friend-quick-add-row" key={friend.friendship_id}>
+                  <span><Avatar name={friend.display_name} avatar={friend.avatar} size={30} /><b>{friend.display_name}</b></span>
+                  <button type="button" onClick={() => addFriendToTrip(friend)} disabled={addingFriendId === friend.friend_id}>{addingFriendId === friend.friend_id ? "Adding…" : "Add"}</button>
+                </div>
+              ))}
+            </div>}
             {canManageMembers && <div className="member-add-row"><input aria-label="Friend's name" value={memberName} onChange={(event) => setMemberName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addMember()} placeholder="Add a friend by name" /><button type="button" onClick={addMember} disabled={memberSaving}>{memberSaving ? "Adding…" : "Add"}</button></div>}
             {!canManageMembers && <p className="member-manager-note">The owner manages the member list. You can still share the invite link.</p>}
           </div>
