@@ -513,8 +513,10 @@ export default function TripPage() {
 
   useEffect(() => {
     const requested = searchParams.get("view");
-    const fallback = isExpenseGroupName(trip?.name) ? "settle" : "plan";
-    const next = ["plan", "settle", "updates", "profile"].includes(requested) ? requested : fallback;
+    const expenseOnlyGroup = isExpenseGroupName(trip?.name);
+    const fallback = expenseOnlyGroup ? "settle" : "plan";
+    let next = ["plan", "settle", "updates", "profile"].includes(requested) ? requested : fallback;
+    if (expenseOnlyGroup && next === "plan") next = "settle";
     if (next !== activeTab) setActiveTab(next);
   }, [searchParams, trip?.name]);
 
@@ -1676,7 +1678,11 @@ export default function TripPage() {
         <Icon name="plus" style={{ width: 19, height: 19 }} /><span>Add activity</span>
       </button>}
       <nav className={`mobile-bottom-nav trip-bottom-nav ${expenseOnly ? "expense-group-nav" : ""}`} aria-label="Trip navigation">
-        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="plans" /><small>Itinerary</small></button>
+        {expenseOnly ? (
+          <button className="bottom-nav-item" onClick={() => router.push("/?view=settle")}><NavIcon name="back" /><small>All groups</small></button>
+        ) : (
+          <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="plans" /><small>Itinerary</small></button>
+        )}
         <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
         <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => switchTab("updates")}><UpdateBadge count={notifications.unread} /><small>Updates</small></button>
         <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => switchTab("profile")}><NavIcon name="profile" /><small>Profile</small></button>
