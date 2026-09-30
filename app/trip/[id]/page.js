@@ -896,6 +896,24 @@ export default function TripPage() {
     downloadIcs(activity);
   }
 
+  async function updateCurrency(nextCurrency) {
+    if (!CURRENCIES[nextCurrency] || nextCurrency === currency) return;
+    const previous = currency;
+    setCurrency(nextCurrency);
+    localStorage.setItem(`wayfare_currency_${tripId}`, nextCurrency);
+    const { data, error } = await supabase.from("trips").update({ currency: nextCurrency }).eq("id", tripId).select();
+    if (error || !data || !data.length) {
+      setCurrency(previous);
+      localStorage.setItem(`wayfare_currency_${tripId}`, previous);
+      showNotice(
+        error ? `Currency wasn't saved: ${error.message}` : "Currency wasn't saved — only the owner can change it.",
+        "error"
+      );
+      return;
+    }
+    showNotice(`Currency changed to ${nextCurrency}.`);
+  }
+
   async function updateTripName() {
     const trimmed = nameDraft.trim();
     if (!trimmed) {
@@ -1418,7 +1436,7 @@ export default function TripPage() {
             <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
           </div>
           <label className="field-label">Trip currency</label>
-          <select aria-label="Trip currency" className="settings-select" value={currency} onChange={(event) => { const next = event.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
+          <select aria-label="Trip currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
           <label className="field-label">Trip dates</label>
           <div className="trip-profile-dates">
             <label><span>Starts</span><input type="date" value={tripDateDraft.start} onChange={(event) => setTripDateDraft((current) => ({ ...current, start: event.target.value, end: current.end && current.end < event.target.value ? "" : current.end }))} /></label>
@@ -1692,7 +1710,7 @@ export default function TripPage() {
             <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
           </div>
           <label className="field-label">Group currency</label>
-          <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => { const next = event.target.value; setCurrency(next); localStorage.setItem(`wayfare_currency_${tripId}`, next); supabase.from("trips").update({ currency: next }).eq("id", tripId).then(() => {}); }}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
+          <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
           <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
           <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage members" : "View members"}</button>
         </div>
