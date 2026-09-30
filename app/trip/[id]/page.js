@@ -510,10 +510,6 @@ export default function TripPage() {
   const inviteToken = searchParams.get("invite");
 
   useEffect(() => {
-    if (isExpenseGroupName(trip?.name) && activeTab === "plan") switchTab("settle");
-  }, [trip?.name, activeTab]);
-
-  useEffect(() => {
     const requested = searchParams.get("view");
     const fallback = isExpenseGroupName(trip?.name) ? "settle" : "plan";
     const next = ["plan", "settle", "updates", "profile"].includes(requested) ? requested : fallback;
@@ -713,14 +709,13 @@ export default function TripPage() {
     return (account.user && travelers.find((t) => t.user_id === account.user.id)) || travelers.find((t) => t.name.toLowerCase() === (me || "").toLowerCase());
   }
 
-  function switchTab(nextTab) {
-    const safeTab = isExpenseGroupName(trip?.name) && nextTab === "plan" ? "settle" : nextTab;
-    setActiveTab(safeTab);
-    router.replace(`/trip/${tripId}${safeTab === "plan" ? "" : `?view=${safeTab}`}`, { scroll: false });
+function switchTab(nextTab) {
+    setActiveTab(nextTab);
+    router.replace(`/trip/${tripId}${nextTab === "plan" ? "" : `?view=${nextTab}`}`, { scroll: false });
     window.scrollTo({ top: 0, behavior: "instant" });
-  }
-
-  function showNotice(text, type = "success") {
+}
+  
+fu  nction showNotice(text, type = "success") {
     setActionNotice({ text, type });
     window.setTimeout(() => setActionNotice(null), 3200);
   }
@@ -1663,8 +1658,7 @@ export default function TripPage() {
         <Icon name="plus" style={{ width: 19, height: 19 }} /><span>Add activity</span>
       </button>}
       <nav className={`mobile-bottom-nav trip-bottom-nav ${expenseOnly ? "expense-group-nav" : ""}`} aria-label="Trip navigation">
-        {!expenseOnly && <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="plans" /><small>Itinerary</small></button>}
-        <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
+        <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="plans" /><small>Itinerary</small></button>        <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
         <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => switchTab("updates")}><UpdateBadge count={notifications.unread} /><small>Updates</small></button>
         <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => switchTab("profile")}><NavIcon name="profile" /><small>Profile</small></button>
       </nav>
