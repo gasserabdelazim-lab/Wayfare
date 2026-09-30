@@ -477,6 +477,8 @@ export default function TripPage() {
   const [actionNotice, setActionNotice] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteCostTarget, setDeleteCostTarget] = useState(null);
+  const [deletingCost, setDeletingCost] = useState(false);
   const [costForm, setCostForm] = useState({ desc: "", amt: "", paidBy: "", currency: "", exchangeRate: "1", splitMethod: "equal", participantIds: [], splitValues: {}, notes: "", receiptData: "" });
   const [costSaving, setCostSaving] = useState(false);
   const [rateLoading, setRateLoading] = useState(false);
@@ -711,7 +713,7 @@ export default function TripPage() {
 
   function switchTab(nextTab) {
     setActiveTab(nextTab);
-    router.replace(`/trip/${tripId}${nextTab === "plan" ? "" : `?view=${nextTab}`}`, { scroll: false });
+    router.replace(`/trip/${tripId}?view=${nextTab}`, { scroll: false });
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
@@ -928,10 +930,18 @@ export default function TripPage() {
     await load();
   }
 
-  async function deleteExtraCost(id) {
-    if (!confirm("Remove this cost?")) return;
-    const { error } = await supabase.from("extra_costs").delete().eq("id", id);
-    if (error) showNotice(`Couldn't remove that cost: ${error.message}`, "error");
+  async function deleteExtraCost() {
+    if (!deleteCostTarget || deletingCost) return;
+    const target = deleteCostTarget;
+    setDeletingCost(true);
+    const { error } = await supabase.from("extra_costs").delete().eq("id", target.id);
+    setDeletingCost(false);
+    if (error) {
+      showNotice(`Couldn't remove that cost: ${error.message}`, "error");
+      return;
+    }
+    setDeleteCostTarget(null);
+    showNotice("Expense removed.");
     await load();
   }
 
@@ -1516,7 +1526,7 @@ export default function TripPage() {
               </span>
               <span className="ledger-row-right">
                 <span className="expense-ledger-amounts"><b>{moneyIn(expense.amount, expense.expenseCurrency)}</b>{expense.expenseCurrency !== currency && <small>{money(expense.baseAmount)} total</small>}</span>
-                <button className="icon-btn" title="Remove cost" onClick={() => deleteExtraCost(expense.id)}><Icon name="trash" style={{ width: 12, height: 12 }} /></button>
+                <button className="icon-btn" title="Remove cost" onClick={() => setDeleteCostTarget(expense)}><Icon name="trash" style={{ width: 12, height: 12 }} /></button>
               </span>
             </div>
           );
@@ -1635,6 +1645,14 @@ export default function TripPage() {
           <h3 id="delete-title">Delete “{deleteTarget.name}”?</h3>
           <p>This removes the activity, its votes, and its comments from the {tripDisplayName} plan.</p>
           <div className="confirm-actions"><button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button><button className="danger-button" onClick={deleteActivity} disabled={deleting}>{deleting ? "Deleting…" : "Delete activity"}</button></div>
+        </div>
+      </div>}
+      {deleteCostTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deletingCost && setDeleteCostTarget(null)}>
+        <div className="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-cost-title" onClick={(event) => event.stopPropagation()}>
+          <div className="confirm-icon">×</div>
+          <h3 id="delete-cost-title">Remove “{deleteCostTarget.description}”?</h3>
+          <p>This removes the expense from {tripDisplayName} for everyone in the group.</p>
+          <div className="confirm-actions"><button onClick={() => setDeleteCostTarget(null)} disabled={deletingCost}>Cancel</button><button className="danger-button" onClick={deleteExtraCost} disabled={deletingCost}>{deletingCost ? "Removing…" : "Remove expense"}</button></div>
         </div>
       </div>}
       {shareOpen && <div className="confirm-backdrop" role="presentation" onClick={() => setShareOpen(false)}>
