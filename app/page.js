@@ -18,7 +18,15 @@ const NAV_ITEMS = [
 
 const EXPENSE_GROUP_PREFIX = "WAYFARE_GROUP::";
 const CURRENCY_OPTIONS = ["EUR", "USD", "GBP", "AED", "CHF", "CAD", "AUD", "JPY", "EGP", "TRY", "SAR"];
+const CURRENCY_SYMBOLS = { EUR: "€", USD: "$", GBP: "£", AED: "AED ", CHF: "CHF ", CAD: "CA$", AUD: "A$", JPY: "¥", EGP: "E£", TRY: "₺", SAR: "SAR " };
 const AVATAR_OPTIONS = ["🧭", "😎", "🌴", "⛰️", "🌊", "🏕️", "🛫", "📸"];
+
+function roundMoney(value) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+function moneyIn(value, code) {
+  return `${CURRENCY_SYMBOLS[code] || `${code} `}${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 function isExpenseGroup(trip) {
   return String(trip?.name || "").startsWith(EXPENSE_GROUP_PREFIX);
@@ -144,6 +152,8 @@ export default function Home() {
   const groupFormRef = useRef(null);
   const [friends, setFriends] = useState([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendBalances, setFriendBalances] = useState({});
+  const [friendBalancesLoading, setFriendBalancesLoading] = useState(false);
   const [friendEmail, setFriendEmail] = useState("");
   const [friendError, setFriendError] = useState("");
   const [friendSending, setFriendSending] = useState(false);
@@ -232,6 +242,111 @@ export default function Home() {
   }, [account.user?.id]);
 
   useEffect(() => { loadFriends(); }, [loadFriends]);
+
+  const loadFriendBalances = useCallback(async () => {
+    const acceptedFriendIds = friends.filter((friend) => friend.status === "accepted").map((friend) => friend.friend_id);
+    if (!account.user || !trips.length || !acceptedFriendIds.length) {
+      setFriendBalances({});
+      return;
+    }
+    setFriendBalancesLoading(true);
+    const tripIds = trips.map((trip) => trip.id);
+    const tripCurrency = {};
+    trips.forEach((trip) => { tripCurrency[trip.id] = trip.currency || "EUR"; });
+
+    const [{ data: travelerRows }, { data: costRows }, { data: activityRows }, { data: settlementRows }] = await Promise.all([
+      supabase.from("travelers").select("id,trip_id,user_id").in("trip_id", tripIds),
+      supabase.from("extra_costs").select("id,trip_id,amount,currency,exchange_rate,paid_by").in("trip_id", tripIds),
+      supabase.from("activities").select("id,trip_id,cost_pp,paid_by").in("trip_id", tripIds),
+      supabase.from("settlements").select("trip_id,from_traveler,to_traveler,amount").in("trip_id", tripIds),
+    ]);
+    const costIds = (costRows || []).map((cost) => cost.id);
+    const { data: splitRows } = costIds.length
+      ? await supabase.from("expense_splits").select("expense_id,traveler_id,owed_amount").in("expense_id", costIds)
+      : { data: [] };
+
+    const travelersByTrip = {};
+    (travelerRows || []).forEach((traveler) => {
+      (travelersByTrip[traveler.trip_id] = travelersByTrip[traveler.trip_id] || []).push(traveler);
+    });
+
+    const result = {};
+    function credit(friendId, currencyCode, amount) {
+      if (!amount) return;
+      result[friendId] = result[friendId] || {};
+      result[friendId][currencyCode] = roundMoney((result[friendId][currencyCode] || 0) + amount);
+    }
+
+    Object.entries(travelersByTrip).forEach(([tripId, tripTravelers]) => {
+      const meRow = tripTravelers.find((traveler) => traveler.user_id === account.user.id);
+      if (!meRow) return;
+      const friendRows = tripTravelers.filter((traveler) => acceptedFriendIds.includes(traveler.user_id));
+      if (!friendRows.length) return;
+
+      const travelerIds = tripTravelers.map((traveler) => traveler.id);
+      const paid = {};
+      const owed = {};
+      travelerIds.forEach((id) => { paid[id] = 0; owed[id] = 0; });
+
+      (activityRows || []).filter((activity) => activity.trip_id === tripId).forEach((activity) => {
+        const total = roundMoney(Number(activity.cost_pp || 0) * travelerIds.length);
+        if (total > 0 && activity.paid_by) {
+          paid[activity.paid_by] = roundMoney((paid[activity.paid_by] || 0) + total);
+          const share = roundMoney(total / travelerIds.length);
+          travelerIds.forEach((id) => { owed[id] = roundMoney((owed[id] || 0) + share); });
+        }
+      });
+
+      (costRows || []).filter((cost) => cost.trip_id === tripId).forEach((cost) => {
+        const rate = Number(cost.exchange_rate) || 1;
+        const base = roundMoney(Number(cost.amount) * rate);
+        if (cost.paid_by) paid[cost.paid_by] = roundMoney((paid[cost.paid_by] || 0) + base);
+        const splits = (splitRows || []).filter((split) => split.expense_id === cost.id);
+        if (splits.length) {
+          const weightTotal = splits.reduce((sum, split) => sum + Number(split.owed_amount || 0), 0) || 1;
+          splits.forEach((split) => {
+            const share = roundMoney((Number(split.owed_amount || 0) / weightTotal) * base);
+            owed[split.traveler_id] = roundMoney((owed[split.traveler_id] || 0) + share);
+          });
+        } else {
+          const share = roundMoney(base / travelerIds.length);
+          travelerIds.forEach((id) => { owed[id] = roundMoney((owed[id] || 0) + share); });
+        }
+      });
+
+      (settlementRows || []).filter((settlement) => settlement.trip_id === tripId).forEach((settlement) => {
+        const amount = roundMoney(settlement.amount);
+        paid[settlement.from_traveler] = roundMoney((paid[settlement.from_traveler] || 0) + amount);
+        paid[settlement.to_traveler] = roundMoney((paid[settlement.to_traveler] || 0) - amount);
+      });
+
+      const nets = {};
+      travelerIds.forEach((id) => { nets[id] = roundMoney((paid[id] || 0) - (owed[id] || 0)); });
+
+      const debtors = Object.entries(nets).filter(([, value]) => value < -0.009).map(([id, value]) => ({ id, amt: -value }));
+      const creditors = Object.entries(nets).filter(([, value]) => value > 0.009).map(([id, value]) => ({ id, amt: value }));
+      let di = 0, ci = 0;
+      while (di < debtors.length && ci < creditors.length) {
+        const amt = roundMoney(Math.min(debtors[di].amt, creditors[ci].amt));
+        const fromId = debtors[di].id, toId = creditors[ci].id;
+        if (fromId === meRow.id) {
+          const friendRow = friendRows.find((row) => row.id === toId);
+          if (friendRow) credit(friendRow.user_id, tripCurrency[tripId], -amt);
+        } else if (toId === meRow.id) {
+          const friendRow = friendRows.find((row) => row.id === fromId);
+          if (friendRow) credit(friendRow.user_id, tripCurrency[tripId], amt);
+        }
+        debtors[di].amt -= amt; creditors[ci].amt -= amt;
+        if (debtors[di].amt < 0.009) di++;
+        if (creditors[ci].amt < 0.009) ci++;
+      }
+    });
+
+    setFriendBalancesLoading(false);
+    setFriendBalances(result);
+  }, [account.user?.id, trips, friends]);
+
+  useEffect(() => { loadFriendBalances(); }, [loadFriendBalances]);
 
   async function sendFriendRequest() {
     const email = friendEmail.trim();
@@ -600,12 +715,29 @@ export default function Home() {
 
             <div className="friend-group">
               <div className="field-label">Your friends{acceptedFriends.length > 0 ? ` (${acceptedFriends.length})` : ""}</div>
-              {friendsLoading && !friends.length ? <p className="group-hint">Loading friends…</p> : acceptedFriends.length > 0 ? acceptedFriends.map((friend) => (
-                <div className="friend-row" key={friend.friendship_id}>
-                  <span><AvatarPreview name={friend.display_name} avatar={friend.avatar} className="profile-bubble" /><b>{friend.display_name || "Someone"}</b></span>
-                  <button type="button" className="friend-decline" onClick={() => removeFriend(friend.friendship_id)} disabled={friendActionId === friend.friendship_id}>Remove</button>
-                </div>
-              )) : <p className="group-hint">No friends yet — add one by email above. They need a Palvoya account first.</p>}
+              {friendsLoading && !friends.length ? <p className="group-hint">Loading friends…</p> : acceptedFriends.length > 0 ? acceptedFriends.map((friend) => {
+                const balance = friendBalances[friend.friend_id] || {};
+                const entries = Object.entries(balance).filter(([, amount]) => Math.abs(amount) > 0.009);
+                return (
+                  <div className="friend-row" key={friend.friendship_id}>
+                    <span><AvatarPreview name={friend.display_name} avatar={friend.avatar} className="profile-bubble" /><b>{friend.display_name || "Someone"}</b></span>
+                    <span className="friend-row-actions">
+                      <span className="friend-balance">
+                        {friendBalancesLoading && !entries.length ? null : entries.length === 0 ? (
+                          <small className="friend-balance-settled">settled up</small>
+                        ) : (
+                          entries.map(([code, amount]) => (
+                            <small key={code} className={amount > 0 ? "friend-balance-owed" : "friend-balance-owes"}>
+                              {amount > 0 ? "owes you " : "you owe "}{moneyIn(Math.abs(amount), code)}
+                            </small>
+                          ))
+                        )}
+                      </span>
+                      <button type="button" className="friend-decline" onClick={() => removeFriend(friend.friendship_id)} disabled={friendActionId === friend.friendship_id}>Remove</button>
+                    </span>
+                  </div>
+                );
+              }) : <p className="group-hint">No friends yet — add one by email above. They need a Palvoya account first.</p>}
             </div>
           </div>
           <div className="profile-card profile-editor-card">

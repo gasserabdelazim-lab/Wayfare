@@ -522,6 +522,11 @@ button { font-family: inherit; }
 .friend-row-actions small { font-size: 10px; opacity: .55; }
 .friend-row-actions button { min-height: 36px; padding: 0 12px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; }
 .friend-decline { border: 1px solid #e0ddd4; background: transparent; color: var(--ink); opacity: .65; }
+.friend-balance { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.friend-balance small { font-size: 10.5px; font-weight: 700; white-space: nowrap; opacity: 1; }
+.friend-balance-settled { opacity: .45 !important; font-weight: 500 !important; }
+.friend-balance-owed { color: var(--teal-deep); }
+.friend-balance-owes { color: var(--coral); }
 .mobile-bottom-nav { position: fixed; z-index: 50; left: 50%; bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 10px)); transform: translateX(-50%) translateZ(0); -webkit-transform: translateX(-50%) translateZ(0); will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; width: min(520px, calc(100% - 24px)); display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px; background: rgba(18,36,36,.96); border: 1px solid rgba(255,255,255,.12); border-radius: 22px; box-shadow: 0 18px 50px rgba(10,27,27,.28); backdrop-filter: blur(18px); }
 .bottom-nav-item { min-width: 0; border: 0; background: transparent; color: rgba(255,255,255,.58); text-decoration: none; padding: 7px 4px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
 .bottom-nav-item > svg { width: 21px; height: 21px; display: block; }
@@ -892,6 +897,29 @@ body { background: #e9ece8; }
 .expense-ledger-amounts { text-align: right; font-family: 'IBM Plex Mono', monospace; color: var(--gold); white-space: nowrap; }
 .expense-ledger-amounts b { font-size: 12px; }
 .expense-ledger-amounts small { margin-top: 3px; color: var(--ink); opacity: .45; font-size: 9px; }
+
+.category-badge { flex-shrink: 0; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: #eef1eb; color: var(--teal-deep); margin-top: 1px; }
+.category-badge.category-food { background: #fdeee0; color: #a85a1f; }
+.category-badge.category-transport { background: #e6effa; color: #2e5fa3; }
+.category-badge.category-lodging { background: #efe6fa; color: #6a3fa0; }
+.category-badge.category-activity { background: #e6f7ee; color: #1f8a5a; }
+.category-badge.category-shopping { background: #fde9ee; color: #b23a63; }
+.category-badge.category-other { background: #eef1eb; color: var(--teal-deep); }
+
+.category-picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 14px; }
+.category-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d9d6cd; border-radius: 999px; padding: 7px 12px; background: #fff; color: var(--ink); font-size: 11px; font-weight: 600; cursor: pointer; }
+.category-chip.selected { border-color: var(--teal); background: var(--teal); color: #fff; }
+
+.spend-breakdown { padding: 10px 0 14px; border-bottom: 1px dashed var(--line); margin-bottom: 2px; }
+.spend-row { display: grid; grid-template-columns: 20px auto 1fr auto; align-items: center; gap: 9px; padding: 5px 0; font-size: 11.5px; }
+.spend-icon { color: var(--teal-deep); opacity: .75; display: grid; place-items: center; }
+.spend-label { white-space: nowrap; opacity: .75; }
+.spend-bar-track { height: 6px; border-radius: 999px; background: #ecebe2; overflow: hidden; min-width: 0; }
+.spend-bar-fill { display: block; height: 100%; background: var(--teal); border-radius: 999px; }
+.spend-amt { font-family: 'IBM Plex Mono', monospace; font-size: 11px; white-space: nowrap; }
+
+.undo-notice { position: fixed; z-index: 95; left: 50%; bottom: 98px; transform: translateX(-50%); width: min(420px, calc(100% - 32px)); display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 10px 12px 16px; border-radius: 13px; background: #16211d; color: #f3f6f2; box-shadow: 0 14px 40px rgba(10,27,27,.3); font-size: 12.5px; }
+.undo-notice button { flex-shrink: 0; min-height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: #dcf590; color: #1d3628; font-size: 11.5px; font-weight: 750; cursor: pointer; }
 
 .expense-composer { margin: 20px -4px -4px; padding: 20px; border: 1px solid #cbdcd6; border-radius: 18px; background: linear-gradient(150deg, #f2f8f5, #fff 54%); }
 .expense-composer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 17px; }
