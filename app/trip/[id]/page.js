@@ -1489,7 +1489,7 @@ export default function TripPage() {
         </div>
       )}
       {activeTab === "plan" ? <div className="trip-hero" style={{ backgroundImage: `url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
-        <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><span className="trip-wordmark">PALVOYA</span><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
+        <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
         <div className="hero-content">
           <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>
           <h1>{tripDisplayName}</h1>
@@ -1501,7 +1501,6 @@ export default function TripPage() {
         </div>
       </div> : <header className="personal-app-header">
         <button className="personal-back" onClick={() => router.push(activeTab === "profile" ? "/" : `/?view=${activeTab}`)}><span aria-hidden="true">←</span>{activeTab === "profile" ? "All plans" : activeTab === "settle" ? "All groups" : "All updates"}</button>
-        <span className="brand-mark dark">PALVOYA</span>
       </header>}
 
       <div className="wrap trip-wrap">
@@ -1510,7 +1509,7 @@ export default function TripPage() {
         <h2>{activeTab === "plan" ? "Activities & ideas" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "My profile"}</h2>
         {activeTab === "profile" && <p className="personal-view-intro">Your details, your style. One profile for every plan.</p>}
       </header>
-      {(activeTab === "settle" || activeTab === "updates") && <button className="group-context-switch" onClick={() => router.push(`/?view=${activeTab}`)}><span><small>Current group</small><strong>{tripDisplayName}</strong></span><span>Change group ↗</span></button>}
+      {(activeTab === "settle" || activeTab === "updates") && <div className="group-context-switch"><span><small>Current group</small><strong>{tripDisplayName}</strong></span></div>}
 
       {activeTab === "plan" && <div className="trip-summary">
         <div><strong>{counts.agreed}</strong><span>Approved</span></div>
@@ -1944,9 +1943,7 @@ export default function TripPage() {
         <Icon name="plus" style={{ width: 19, height: 19 }} /><span>Add activity</span>
       </button>}
       <nav className={`mobile-bottom-nav trip-bottom-nav ${expenseOnly ? "expense-group-nav" : ""}`} aria-label="Trip navigation">
-        {expenseOnly ? (
-          <button className="bottom-nav-item" onClick={() => router.push("/?view=settle")}><NavIcon name="back" /><small>All groups</small></button>
-        ) : (
+        {!expenseOnly && (
           <button className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="plans" /><small>Itinerary</small></button>
         )}
         <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
