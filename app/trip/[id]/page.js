@@ -32,6 +32,12 @@ const icons = {
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/></svg>',
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  food: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v7a2 2 0 0 0 4 0V2M8 9v13M16 2v8c0 1.1.9 2 2 2s2-.9 2-2V2M18 12v10"/></svg>',
+  transport: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>',
+  lodging: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7"/><path d="M3 14h18"/><path d="M7 11V8a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M3 18v2M21 18v2"/></svg>',
+  activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-4z"/><line x1="10" y1="7" x2="10" y2="17" stroke-dasharray="2 2"/></svg>',
+  shopping: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 12.3 12.7 20.2a2 2 0 0 1-2.8 0l-6.1-6.1a2 2 0 0 1 0-2.8L11.7 3.3 20.6 12.3z"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/></svg>',
 };
 
 function Icon({ name, style }) {
@@ -300,6 +306,19 @@ const SPLIT_METHODS = {
   shares: { label: "Shares", hint: "Use ratios" },
 };
 
+const EXPENSE_CATEGORIES = [
+  { id: "food", label: "Food & drink", icon: "food" },
+  { id: "transport", label: "Transport", icon: "transport" },
+  { id: "lodging", label: "Lodging", icon: "lodging" },
+  { id: "activity", label: "Activities", icon: "activity" },
+  { id: "shopping", label: "Shopping", icon: "shopping" },
+  { id: "other", label: "Other", icon: "tag" },
+];
+const EXPENSE_CATEGORY_MAP = Object.fromEntries(EXPENSE_CATEGORIES.map((item) => [item.id, item]));
+function categoryInfo(id) {
+  return EXPENSE_CATEGORY_MAP[id] || EXPENSE_CATEGORY_MAP.other;
+}
+
 function roundMoney(value) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 }
@@ -476,11 +495,13 @@ export default function TripPage() {
   const [activitySaving, setActivitySaving] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [actionNotice, setActionNotice] = useState(null);
+  const [undoNotice, setUndoNotice] = useState(null);
+  const undoTimerRef = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteCostTarget, setDeleteCostTarget] = useState(null);
   const [deletingCost, setDeletingCost] = useState(false);
-  const [costForm, setCostForm] = useState({ desc: "", amt: "", paidBy: "", currency: "", exchangeRate: "1", splitMethod: "equal", participantIds: [], splitValues: {}, notes: "", receiptData: "" });
+  const [costForm, setCostForm] = useState({ desc: "", amt: "", paidBy: "", currency: "", exchangeRate: "1", splitMethod: "equal", category: "other", participantIds: [], splitValues: {}, notes: "", receiptData: "" });
   const [costSaving, setCostSaving] = useState(false);
   const [editingCostId, setEditingCostId] = useState(null);
   const costComposerRef = useRef(null);
@@ -765,6 +786,20 @@ export default function TripPage() {
     window.setTimeout(() => setActionNotice(null), 3200);
   }
 
+  function showUndo(text, onUndo) {
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    setUndoNotice({ text, onUndo });
+    undoTimerRef.current = window.setTimeout(() => setUndoNotice(null), 6000);
+  }
+
+  async function runUndo() {
+    if (!undoNotice) return;
+    const action = undoNotice.onUndo;
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    setUndoNotice(null);
+    await action();
+  }
+
   async function updateMyAvatar(avatar) {
     const traveler = myTraveler();
     if (!traveler) return;
@@ -1023,13 +1058,23 @@ export default function TripPage() {
     }
     setActivities((current) => current.filter((activity) => activity.id !== target.id));
     setDeleteTarget(null);
-    showNotice(`${target.name} was deleted.`);
+    const { id: oldId, created_at, ...restoreFields } = target;
+    showUndo(`${target.name} was deleted.`, async () => {
+      const { error: restoreError } = await supabase.from("activities").insert({ ...restoreFields, trip_id: tripId });
+      if (restoreError) {
+        showNotice(`Couldn't restore ${target.name}: ${restoreError.message}`, "error");
+        return;
+      }
+      showNotice(`${target.name} restored.`);
+      await load();
+    });
     await load();
   }
 
   async function deleteExtraCost() {
     if (!deleteCostTarget || deletingCost) return;
     const target = deleteCostTarget;
+    const savedSplits = (expenseSplits[target.id] || []).map((split) => ({ traveler_id: split.traveler_id, input_value: split.input_value, owed_amount: split.owed_amount }));
     setDeletingCost(true);
     const { error } = await supabase.from("extra_costs").delete().eq("id", target.id);
     setDeletingCost(false);
@@ -1038,7 +1083,19 @@ export default function TripPage() {
       return;
     }
     setDeleteCostTarget(null);
-    showNotice("Expense removed.");
+    const { id: oldId, created_at, travelers: _travelerJoin, ...restoreFields } = target;
+    showUndo(`"${target.description}" was removed.`, async () => {
+      const { data: restored, error: restoreError } = await supabase.from("extra_costs").insert({ ...restoreFields, trip_id: tripId }).select().single();
+      if (restoreError || !restored) {
+        showNotice(`Couldn't restore that expense: ${restoreError?.message || "please try again"}`, "error");
+        return;
+      }
+      if (savedSplits.length) {
+        await supabase.from("expense_splits").insert(savedSplits.map((split) => ({ ...split, expense_id: restored.id })));
+      }
+      showNotice("Expense restored.");
+      await load();
+    });
     await load();
   }
 
@@ -1187,6 +1244,7 @@ export default function TripPage() {
       currency: costForm.currency,
       exchange_rate: costForm.currency === currency ? 1 : rate,
       split_method: costForm.splitMethod,
+      category: costForm.category || "other",
       notes: costForm.notes.trim() || null,
       receipt_data: costForm.receiptData || null,
     };
@@ -1207,7 +1265,7 @@ export default function TripPage() {
       }
       setCostSaving(false);
       setEditingCostId(null);
-      setCostForm({ desc: "", amt: "", paidBy: costForm.paidBy, currency, exchangeRate: "1", splitMethod: "equal", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
+      setCostForm({ desc: "", amt: "", paidBy: costForm.paidBy, currency, exchangeRate: "1", splitMethod: "equal", category: "other", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
       showNotice("Expense updated.");
       await load();
       return;
@@ -1227,7 +1285,7 @@ export default function TripPage() {
       return;
     }
     setCostSaving(false);
-    setCostForm({ desc: "", amt: "", paidBy: costForm.paidBy, currency, exchangeRate: "1", splitMethod: "equal", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
+    setCostForm({ desc: "", amt: "", paidBy: costForm.paidBy, currency, exchangeRate: "1", splitMethod: "equal", category: "other", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
     showNotice("Expense added with its split.");
     await load();
   }
@@ -1244,6 +1302,7 @@ export default function TripPage() {
       currency: cost.currency || currency,
       exchangeRate: cost.exchange_rate != null ? String(cost.exchange_rate) : "1",
       splitMethod: cost.split_method || "equal",
+      category: cost.category || "other",
       participantIds,
       splitValues,
       notes: cost.notes || "",
@@ -1255,7 +1314,7 @@ export default function TripPage() {
 
   function cancelEditExtraCost() {
     setEditingCostId(null);
-    setCostForm({ desc: "", amt: "", paidBy: "", currency, exchangeRate: "1", splitMethod: "equal", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
+    setCostForm({ desc: "", amt: "", paidBy: "", currency, exchangeRate: "1", splitMethod: "equal", category: "other", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
   }
 
   async function markTransferPaid(transfer) {
@@ -1339,6 +1398,19 @@ export default function TripPage() {
   const extrasTotal = roundMoney(expenseDetails.reduce((sum, expense) => sum + expense.baseAmount, 0));
   const total = roundMoney(itemsTotal + extrasTotal);
   const share = travelers.length ? roundMoney(total / travelers.length) : 0;
+
+  const categorySpend = (() => {
+    const totals = {};
+    expenseDetails.forEach((expense) => {
+      const id = expense.category || "other";
+      totals[id] = roundMoney((totals[id] || 0) + expense.baseAmount);
+    });
+    if (itemsTotal > 0) totals.activity = roundMoney((totals.activity || 0) + itemsTotal);
+    return EXPENSE_CATEGORIES.map((item) => ({ ...item, amount: totals[item.id] || 0 }))
+      .filter((item) => item.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+  })();
+  const categorySpendTotal = roundMoney(categorySpend.reduce((sum, item) => sum + item.amount, 0));
 
   const paid = {};
   const owed = {};
@@ -1662,6 +1734,19 @@ export default function TripPage() {
           <div style={{ textAlign: "right" }}><div className="num">{money(share)}</div><div className="lab">per traveler</div></div>
         </div>
         <div className="cost-sub">{expenseOnly ? `${money(extrasTotal)} in shared expenses` : `${money(itemsTotal)} from activities · ${money(extrasTotal)} in extras`}</div>
+        {categorySpend.length > 1 && (
+          <div className="spend-breakdown">
+            <div className="field-label">Where it went</div>
+            {categorySpend.map((item) => (
+              <div className="spend-row" key={item.id}>
+                <span className="spend-icon"><Icon name={item.icon} style={{ width: 13, height: 13 }} /></span>
+                <span className="spend-label">{item.label}</span>
+                <span className="spend-bar-track"><span className="spend-bar-fill" style={{ width: `${categorySpendTotal > 0 ? Math.round((item.amount / categorySpendTotal) * 100) : 0}%` }} /></span>
+                <span className="spend-amt">{money(item.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {activities.filter((a) => a.cost_pp > 0).map((a) => {
           const payer = travelers.find((t) => t.id === a.paid_by);
           return (
@@ -1677,6 +1762,7 @@ export default function TripPage() {
           const participantNames = expense.allocations.map((allocation) => travelers.find((traveler) => traveler.id === allocation.traveler_id)?.name).filter(Boolean);
           return (
             <div className="ledger-row expense-ledger-row" key={expense.id}>
+              <span className={`category-badge category-${expense.category || "other"}`} title={categoryInfo(expense.category).label}><Icon name={categoryInfo(expense.category).icon} style={{ width: 14, height: 14 }} /></span>
               <span className="ledger-name">
                 <span className="expense-title-line">{expense.description}{expense.receipt_data && <a className="receipt-link" href={expense.receipt_data} target="_blank" rel="noreferrer">Receipt</a>}</span>
                 <span className="ledger-sub">Paid by {expense.travelers?.name || "someone"} · {SPLIT_METHODS[expense.split_method]?.label || "Equal"} split · {participantNames.join(", ") || "everyone"}</span>
@@ -1698,6 +1784,14 @@ export default function TripPage() {
           <div className="expense-basic-grid">
             <label><span className="field-label">Description</span><input aria-label="Expense description" placeholder="e.g. Supermarket" value={costForm.desc} onChange={(event) => setCostForm({ ...costForm, desc: event.target.value })} /></label>
             <label><span className="field-label">Who paid?</span><select className="paid-select" value={costForm.paidBy} onChange={(event) => setCostForm({ ...costForm, paidBy: event.target.value })}><option value="">Choose payer</option>{travelers.map((traveler) => <option key={traveler.id} value={traveler.id}>{traveler.name}</option>)}</select></label>
+          </div>
+          <div className="category-picker" role="group" aria-label="Expense category">
+            {EXPENSE_CATEGORIES.map((item) => (
+              <button type="button" key={item.id} className={`category-chip ${costForm.category === item.id ? "selected" : ""}`} onClick={() => setCostForm({ ...costForm, category: item.id })}>
+                <Icon name={item.icon} style={{ width: 15, height: 15 }} />
+                <span>{item.label}</span>
+              </button>
+            ))}
           </div>
           <div className="expense-money-grid">
             <label><span className="field-label">Amount</span><div className="expense-amount-input"><span>{CURRENCIES[costForm.currency]?.symbol}</span><input aria-label="Expense amount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" value={costForm.amt} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setCostForm({ ...costForm, amt: event.target.value })} /></div></label>
@@ -1803,6 +1897,7 @@ export default function TripPage() {
       <div className="footnote">Palvoya — private plans for authenticated group members.</div>
 
       {actionNotice && <div className={`action-notice ${actionNotice.type === "error" ? "notice-error" : ""}`} role="status">{actionNotice.text}</div>}
+      {undoNotice && <div className="undo-notice" role="status"><span>{undoNotice.text}</span><button type="button" onClick={runUndo}>Undo</button></div>}
       {deleteTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deleting && setDeleteTarget(null)}>
         <div className="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-title" onClick={(event) => event.stopPropagation()}>
           <div className="confirm-icon">×</div>
