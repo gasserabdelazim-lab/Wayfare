@@ -1008,3 +1008,30 @@ body { background: #e9ece8; }
   .auth-welcome .account-card { padding: 18px; }
   .hero-back { padding: 8px 10px; }
 }
+
+.install-banner {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 14px 40px 14px 16px;
+  border-radius: 16px;
+  background: #16211d;
+  color: #f3f6f2;
+  box-shadow: 0 14px 34px rgba(10,20,17,.32);
+}
+.install-banner p { margin: 0; font-size: 12px; line-height: 1.5; }
+.install-banner b { font-weight: 750; }
+.install-share-icon { display: inline-block; font-size: 13px; }
+.install-banner-button { flex-shrink: 0; min-height: 38px; padding: 0 16px; border: 0; border-radius: 10px; background: #dcf590; color: #1d3628; font-size: 12px; font-weight: 750; cursor: pointer; }
+.install-banner-close { position: absolute; top: 8px; right: 10px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: #f3f6f2; font-size: 15px; line-height: 1; cursor: pointer; }
+
+@media (max-width: 560px) {
+  .install-banner { left: 10px; right: 10px; padding: 13px 36px 13px 14px; }
+}

@@ -1,12 +1,18 @@
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import "./social-design.css";
+import InstallPrompt from "../components/InstallPrompt";
 
 export const viewport = { themeColor: "#f1f3ef", colorScheme: "light" };
 
 export const metadata = {
   title: "Palvoya — plan together",
-  description: "Vote on the itinerary, split the costs, plan the trip together."
+  description: "Vote on the itinerary, split the costs, plan the trip together.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Palvoya",
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -19,7 +25,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <InstallPrompt />
+      </body>
     </html>
   );
 }
