@@ -419,9 +419,11 @@ button { font-family: inherit; }
 .header-profile-button { width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 50%; padding: 3px; background: rgba(31,111,99,.09); cursor: pointer; }
 .header-profile-button .profile-bubble { width: 36px; height: 36px; }
 .app-header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.header-add-button { width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--teal); color: #fff; font-size: 21px; line-height: 1; cursor: pointer; box-shadow: 0 6px 16px rgba(18,63,56,.22); transition: transform .12s; }
-.header-add-button:hover { transform: scale(1.06); }
+.header-add-button { height: 42px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 0 16px 0 14px; background: var(--teal); color: #fff; font-size: 12.5px; font-weight: 750; white-space: nowrap; cursor: pointer; box-shadow: 0 6px 16px rgba(18,63,56,.22); transition: transform .12s; }
+.header-add-button span { font-size: 17px; line-height: 1; }
+.header-add-button:hover { transform: scale(1.04); }
 .header-add-button:active { transform: scale(.95); }
+@media (max-width: 420px) { .header-add-button { padding: 0 13px 0 11px; font-size: 11.5px; } }
 .profile-bubble, .large-profile-bubble { display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--teal-deep); color: white; font-weight: 700; }
 .profile-bubble { width: 36px; height: 36px; }
 .large-profile-bubble { width: 70px; height: 70px; margin: 0 auto 24px; font: 500 28px 'Fraunces', serif; }
@@ -533,6 +535,7 @@ button { font-family: inherit; }
 .bottom-nav-item small { font-size: 10px; }
 .bottom-nav-item.active { color: white; background: rgba(255,255,255,.12); }
 .trip-bottom-nav { display: none; }
+.trip-bottom-nav.expense-group-nav { grid-template-columns: repeat(3, 1fr); }
 
 /* ---------- Reliable activity composer ---------- */
 .activity-composer { border-radius: 18px; padding: 22px; }

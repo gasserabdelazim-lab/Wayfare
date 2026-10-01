@@ -641,14 +641,13 @@ export default function Home() {
         <div><div className="brand-mark dark">PALVOYA</div><p>Plan together. Settle simply.</p></div>
         <div className="app-header-actions">
           {(activeView === "plans" || activeView === "settle") && (
-            <button type="button" className="header-add-button" aria-label={activeView === "settle" ? "New expense group" : "New trip"} onClick={handleHeaderAdd}><span aria-hidden="true">＋</span></button>
+            <button type="button" className="header-add-button" onClick={handleHeaderAdd}><span aria-hidden="true">＋</span>{activeView === "settle" ? "New group" : "New trip"}</button>
           )}
           <button type="button" className="header-profile-button" aria-label="Open your profile" onClick={() => navigateView("profile")}><AvatarPreview name={yourName} avatar={profileAvatar} /></button>
         </div>
       </header>
 
       <div className="app-content">
-        {activeView !== "plans" && <button type="button" className="home-view-back" onClick={() => navigateView("plans")}><span aria-hidden="true">←</span> Back to plans</button>}
         {activeView === "plans" && (
           <section className="plans-home-view">
             {planTrips.length > 0 ? savedTripsBlock : emptyPlansHeroBlock}
