@@ -1,6 +1,7 @@
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import "./social-design.css";
+import "./refinements.css";
 import InstallPrompt from "../components/InstallPrompt";
 
 export const viewport = { themeColor: "#f1f3ef", colorScheme: "light" };
