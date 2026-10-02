@@ -121,6 +121,30 @@ button:focus-visible, a:focus-visible { outline-color:#123f31; }
   .cost-card, .settle-card { padding:18px; }
   .saved-trip-card .trip-card-cover { height:164px; }
 }
+/* Compact "Edit" affordance for trip/group details — a small pill in the
+   corner of the view header, like the header's New trip/New group button,
+   instead of a full-width administration row. */
+.trip-view-header { position: relative; }
+.compact-edit-trigger { position: absolute; top: 22px; right: 2px; }
+.compact-edit-trigger > summary {
+  list-style: none; width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--paper-2); border: 1px solid var(--line);
+  color: var(--teal); cursor: pointer; transition: border-color .15s, background .15s;
+}
+.compact-edit-trigger > summary::-webkit-details-marker,
+.compact-edit-trigger > summary::marker { display: none; content: ""; }
+.compact-edit-trigger > summary:hover { border-color: var(--teal); }
+.compact-edit-trigger[open] > summary { background: var(--surface-2); border-color: var(--teal); }
+.compact-edit-trigger .trip-details-body {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 30;
+  width: min(340px, 86vw); max-height: 70vh; overflow-y: auto;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 18px;
+  padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,.4);
+}
+.compact-edit-heading { margin-bottom: 10px; }
+.compact-edit-heading strong { display: block; font-size: 16px; margin-top: 2px; }
+@media(max-width:480px) { .compact-edit-trigger { top: 20px; } }
+
 /* Loading skeleton for the Plans/Settle lists — shown while account + trips
    are resolving, so the empty-state copy never flashes before real data. */
 .plans-loading-skeleton { padding-top: 6px; }

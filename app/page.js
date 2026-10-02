@@ -9,6 +9,25 @@ import { UpdateBadge, UpdateToast, UpdatesFeed } from "../components/UpdateNotif
 import { useUpdateNotifications } from "../lib/useUpdateNotifications";
 import { destinationInfo, findDestinationPhotos } from "../lib/destinations";
 import { useWayfareAccount } from "../lib/useWayfareAccount";
+import { inferExpense } from "../lib/expenseAppearance.mjs";
+
+// Presentational-only icon pick for a trip or expense group, based on its
+// name — separate from inferExpense's DB-category inference so it can use
+// a wider, icon-only vocabulary without touching real expense categories.
+function autoTripIcon(name = "") {
+  const text = name.toLowerCase();
+  if (/\b(ski|skiing|snow|snowboard)\b/.test(text)) return "ski";
+  if (/\b(mountain|hike|hiking|alps|trek)\b/.test(text)) return "mountain";
+  if (/\b(beach|coast|island|seaside)\b/.test(text)) return "beach";
+  if (/\b(camp|camping)\b/.test(text)) return "camp";
+  if (/\b(cruise|boat|sail|sailing)\b/.test(text)) return "boat";
+  const inferred = inferExpense(name);
+  return inferred.icon === "tag" ? "plane" : inferred.icon;
+}
+function autoGroupIcon(name = "") {
+  const inferred = inferExpense(name);
+  return inferred.icon === "tag" ? "group" : inferred.icon;
+}
 
 const NAV_ITEMS = [
   { id: "plans", icon: "plans", label: "Plans" },
@@ -643,8 +662,8 @@ export default function Home() {
 
   const settleListsBlock = (
     <div className="settle-lists">
-      {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <div className="saved-trip-row settle-row-wrap" key={group.id}><button className="feed-row settle-destination-row" onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon"><ExpenseIcon name="lodging" label="Everyday group" /></span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div></button><button className="plan-delete-button" aria-label={`Delete ${displayTripName(group)} group`} title="Delete group" onClick={() => setDeletePlanTarget(group)}>×</button></div>)}</>}
-      {planTrips.length > 0 && <><div className="section-title-row settle-section-title"><h2>Trips</h2><span>{planTrips.length}</span></div>{planTrips.map((trip) => <button className="feed-row settle-destination-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon"><ExpenseIcon name="plane" label="Trip" /></span><div><small className="row-kicker">TRIP EXPENSES</small><strong>{trip.name}</strong><small>Use during the trip or settle afterward</small></div></button>)}</>}
+      {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <div className="saved-trip-row settle-row-wrap" key={group.id}><button className="feed-row settle-destination-row" onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon"><ExpenseIcon name={autoGroupIcon(displayTripName(group))} label="Everyday group" /></span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div></button><button className="plan-delete-button" aria-label={`Delete ${displayTripName(group)} group`} title="Delete group" onClick={() => setDeletePlanTarget(group)}>×</button></div>)}</>}
+      {planTrips.length > 0 && <><div className="section-title-row settle-section-title"><h2>Trips</h2><span>{planTrips.length}</span></div>{planTrips.map((trip) => <button className="feed-row settle-destination-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon"><ExpenseIcon name={autoTripIcon(trip.name)} label="Trip" /></span><div><small className="row-kicker">TRIP EXPENSES</small><strong>{trip.name}</strong><small>Use during the trip or settle afterward</small></div></button>)}</>}
     </div>
   );
 
