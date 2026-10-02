@@ -1,6 +1,10 @@
 /* Final shared surface and type scale. Keep the same four navigation destinations.
    Brand tokens now live in globals.css's :root only. */
 body { background:#181d24; }
+/* Signature teal-to-violet gradient headline accent (matches the Kubbar deck's
+   hero treatment). Wins over social-design.css's flat color for this span since
+   this file loads last. */
+.journey-welcome h1 span, .app-welcome h1 span, .home-hero h1 span, .profile-stats strong, .trip-summary strong { background: linear-gradient(90deg, var(--teal), var(--purple)); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; }
 .mobile-app-home, .trip-shell { background:var(--paper); }
 .app-header, .personal-app-header { background:#101418; border-bottom:1px solid var(--line); }
 .app-header p { color:#b3c2cc; opacity:1; font-size:13px; }
