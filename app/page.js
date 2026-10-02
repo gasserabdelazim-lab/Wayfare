@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import NavIcon from "../components/NavIcon";
+import ExpenseIcon from "../components/ExpenseIcon";
 import AccountPanel from "../components/AccountPanel";
 import { UpdateBadge, UpdateToast, UpdatesFeed } from "../components/UpdateNotifications";
 import { useUpdateNotifications } from "../lib/useUpdateNotifications";
@@ -630,8 +631,8 @@ export default function Home() {
 
   const settleListsBlock = (
     <div className="settle-lists">
-      {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <div className="saved-trip-row settle-row-wrap" key={group.id}><button className="feed-row settle-destination-row" onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon">⌂</span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div><b>›</b></button><button className="plan-delete-button" aria-label={`Delete ${displayTripName(group)} group`} title="Delete group" onClick={() => setDeletePlanTarget(group)}>×</button></div>)}</>}
-      {planTrips.length > 0 && <><div className="section-title-row settle-section-title"><h2>Trips</h2><span>{planTrips.length}</span></div>{planTrips.map((trip) => <button className="feed-row settle-destination-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon">✈</span><div><small className="row-kicker">TRIP EXPENSES</small><strong>{trip.name}</strong><small>Use during the trip or settle afterward</small></div><b>›</b></button>)}</>}
+      {expenseGroups.length > 0 && <><div className="section-title-row settle-section-title"><h2>Expense groups</h2><span>{expenseGroups.length}</span></div>{expenseGroups.map((group) => <div className="saved-trip-row settle-row-wrap" key={group.id}><button className="feed-row settle-destination-row" onClick={() => router.push(`/trip/${group.id}?view=settle`)}><span className="feed-icon"><ExpenseIcon name="lodging" label="Everyday group" /></span><div><small className="row-kicker">EVERYDAY GROUP</small><strong>{displayTripName(group)}</strong><small>Add expenses and see who owes whom</small></div></button><button className="plan-delete-button" aria-label={`Delete ${displayTripName(group)} group`} title="Delete group" onClick={() => setDeletePlanTarget(group)}>×</button></div>)}</>}
+      {planTrips.length > 0 && <><div className="section-title-row settle-section-title"><h2>Trips</h2><span>{planTrips.length}</span></div>{planTrips.map((trip) => <button className="feed-row settle-destination-row" key={trip.id} onClick={() => router.push(`/trip/${trip.id}?view=settle`)}><span className="feed-icon"><ExpenseIcon name="plane" label="Trip" /></span><div><small className="row-kicker">TRIP EXPENSES</small><strong>{trip.name}</strong><small>Use during the trip or settle afterward</small></div></button>)}</>}
     </div>
   );
 

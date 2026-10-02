@@ -11,12 +11,15 @@ body { background:var(--paper); }
 .mobile-app-home::before, .trip-shell::before {
   content: "";
   position: absolute;
-  top: 0; left: 0; right: 0; height: 900px;
+  top: 0; left: 0; right: 0; bottom: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 680px 520px at 92% -8%, rgba(139,108,255,.40), transparent 62%),
-    radial-gradient(ellipse 620px 460px at 2% 4%, rgba(31,209,204,.30), transparent 58%);
+    radial-gradient(ellipse 680px 520px at 92% -6%, rgba(139,108,255,.42), transparent 60%),
+    radial-gradient(ellipse 620px 460px at 2% 2%, rgba(31,209,204,.32), transparent 56%),
+    radial-gradient(ellipse 560px 620px at 100% 46%, rgba(139,108,255,.20), transparent 55%),
+    radial-gradient(ellipse 540px 520px at -4% 68%, rgba(31,209,204,.18), transparent 55%),
+    radial-gradient(ellipse 600px 480px at 96% 96%, rgba(139,108,255,.16), transparent 55%);
 }
 .app-header, .app-content { position: relative; z-index: 1; }
 /* Signature teal-to-violet gradient headline accent (matches the Kubbar deck's
