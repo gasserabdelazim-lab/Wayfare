@@ -10,6 +10,12 @@ const paths = {
   activity: <><path d="M3 6h18v4a2 2 0 0 0 0 4v4H3v-4a2 2 0 0 0 0-4Z"/><path d="M9 6v12" strokeDasharray="2 3"/></>,
   shopping: <><path d="M5 8h14l1 13H4ZM8 8V6a4 4 0 0 1 8 0v2"/></>,
   tag: <><path d="M3 3h8l10 10-8 8L3 11Z"/><circle cx="8" cy="8" r="1"/></>,
+  group: <><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15.5 14.3c2.5.3 4.5 2.3 4.5 5.2"/></>,
+  beach: <><path d="M12 12V3M7 7l5 5 5-5M3 21c3-4 15-4 18 0M4 16c4-5 12-5 16 0"/></>,
+  mountain: <><path d="m3 19 7-12 4 7 2-3 5 8Z"/><circle cx="17" cy="6" r="2"/></>,
+  camp: <><path d="M12 4 3 20h18L12 4Zm0 6-5 10M12 10l5 10"/></>,
+  ski: <><circle cx="17" cy="5" r="2"/><path d="m3 20 8-9 2 3 7-10M8 15l4 5"/></>,
+  boat: <><path d="M4 15h16l-2 5H6ZM7 15V6h4l5 5M7 9h7"/></>,
 };
 export default function ExpenseIcon({ name, label }) {
   return <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>{paths[name] || paths.tag}</svg>;
