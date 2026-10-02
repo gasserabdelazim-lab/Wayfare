@@ -1,7 +1,7 @@
 // Palvoya service worker.
 // Bump CACHE_NAME whenever static assets/behavior change meaningfully so
 // old caches get cleaned up on activate.
-const CACHE_NAME = "palvoya-cache-v1";
+const CACHE_NAME = "palvoya-cache-v2";
 const PRECACHE_URLS = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
