@@ -1728,6 +1728,54 @@ export default function TripPage() {
       </section>
 
       <section className={activeTab === "settle" ? "tab-panel" : "tab-panel is-hidden"}>
+      {expenseOnly && <details className="trip-details-card expense-group-details">
+        <summary><div><span className="eyebrow">Group administration</span><strong>Group details</strong><small>Name, currency, and members</small></div><b>Edit</b></summary>
+        <div className="trip-details-body">
+          <label className="field-label">Group name</label>
+          <div className="trip-name-edit">
+            <input aria-label="Group name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Roommates" />
+            <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
+          </div>
+          <label className="field-label">Group currency</label>
+          <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
+          <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
+          <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage members" : "View members"}</button>
+        </div>
+      </details>}
+      <div className="sec-head"><h2>Settle up</h2></div>
+      <div className="settle-card">
+        {myBalance && (
+          <div className={`settle-headline ${myBalance.net > 0.009 ? "sh-pos" : myBalance.net < -0.009 ? "sh-neg" : "sh-zero"}`}>
+            {myBalance.net > 0.009 && <>You're owed <b>{money(myBalance.net)}</b> overall</>}
+            {myBalance.net < -0.009 && <>You owe <b>{money(Math.abs(myBalance.net))}</b> overall</>}
+            {myBalance.net >= -0.009 && myBalance.net <= 0.009 && <>You're all settled up</>}
+          </div>
+        )}
+        {balances.map((b) => (
+          <div className="balance-row" key={b.id}>
+            <span className="ledger-name balance-name"><Avatar name={b.name} avatar={travelers.find((traveler) => traveler.id === b.id)?.avatar} size={22} />{b.name}</span>
+            <span className={b.net > 0.009 ? "balance-pos" : b.net < -0.009 ? "balance-neg" : "balance-zero"}>
+              {b.net > 0.009 ? `gets back ${money(b.net)}` : b.net < -0.009 ? `owes ${money(Math.abs(b.net))}` : "settled"}
+            </span>
+          </div>
+        ))}
+        <div className="settle-divider">Who pays whom <span className="simplified-badge">simplified</span></div>
+        {transfers.length === 0 ? (
+          <div className="ledger-empty">Everyone's square.</div>
+        ) : transfers.map((t, i) => (
+          <div className="transfer-row" key={`${t.fromId}-${t.toId}-${i}`}>
+            <Avatar name={t.from} avatar={travelers.find((traveler) => traveler.name === t.from)?.avatar} size={24} /><span>{t.from}</span>
+            <Icon name="arrow" />
+            <Avatar name={t.to} avatar={travelers.find((traveler) => traveler.name === t.to)?.avatar} size={24} /><span>{t.to}</span>
+            <span className="transfer-amt">{money(t.amt)}</span>
+            <button className="mark-paid-button" onClick={() => markTransferPaid(t)} disabled={settlementSaving}>Mark paid</button>
+          </div>
+        ))}
+        {settlements.length > 0 && <><div className="settle-divider">Payment history <span className="simplified-badge">{settlements.length}</span></div><div className="settlement-history">{settlements.map((settlement) => { const from = travelers.find((traveler) => traveler.id === settlement.from_traveler); const to = travelers.find((traveler) => traveler.id === settlement.to_traveler); return <div className="settlement-row" key={settlement.id}><span className="settlement-check">✓</span><div><strong>{from?.name || "Someone"} paid {to?.name || "someone"}</strong><small>{money(settlement.amount)} · {new Date(settlement.settled_at || settlement.created_at).toLocaleDateString()}</small></div><button onClick={() => undoSettlement(settlement.id)}>Undo</button></div>; })}</div></>}
+      </div>
+      </section>
+
+      <section className={activeTab === "settle" ? "tab-panel" : "tab-panel is-hidden"}>
       {expenseOnly && <div className="expense-only-banner"><span>⌂</span><div><strong>Everyday expense group</strong><p>No itinerary needed. Add supermarket runs, rent, dinners, or anything the group shares.</p></div></div>}
       <div className="sec-head"><h2>Costs so far</h2></div>
       <div className="cost-card">
@@ -1814,54 +1862,6 @@ export default function TripPage() {
           <div className="receipt-picker"><label><span>{costForm.receiptData ? "✓ Receipt attached" : "＋ Add receipt photo"}</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseReceipt(event.target.files?.[0])} /></label>{costForm.receiptData && <><img src={costForm.receiptData} alt="Receipt preview" /><button type="button" onClick={() => setCostForm({ ...costForm, receiptData: "" })}>Remove</button></>}</div>
           <button className="add-expense-button" onClick={addExtraCost} disabled={costSaving}>{costSaving ? (editingCostId ? "Saving changes…" : "Saving expense…") : editingCostId ? `Save changes${Number(costForm.amt) > 0 ? ` · ${moneyIn(costForm.amt, costForm.currency)}` : ""}` : `Add expense${Number(costForm.amt) > 0 ? ` · ${moneyIn(costForm.amt, costForm.currency)}` : ""}`}</button>
         </div>
-      </div>
-      </section>
-
-      <section className={activeTab === "settle" ? "tab-panel" : "tab-panel is-hidden"}>
-      {expenseOnly && <details className="trip-details-card expense-group-details">
-        <summary><div><span className="eyebrow">Group administration</span><strong>Group details</strong><small>Name, currency, and members</small></div><b>Edit</b></summary>
-        <div className="trip-details-body">
-          <label className="field-label">Group name</label>
-          <div className="trip-name-edit">
-            <input aria-label="Group name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Roommates" />
-            <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
-          </div>
-          <label className="field-label">Group currency</label>
-          <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
-          <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
-          <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage members" : "View members"}</button>
-        </div>
-      </details>}
-      <div className="sec-head"><h2>Settle up</h2></div>
-      <div className="settle-card">
-        {myBalance && (
-          <div className={`settle-headline ${myBalance.net > 0.009 ? "sh-pos" : myBalance.net < -0.009 ? "sh-neg" : "sh-zero"}`}>
-            {myBalance.net > 0.009 && <>You're owed <b>{money(myBalance.net)}</b> overall</>}
-            {myBalance.net < -0.009 && <>You owe <b>{money(Math.abs(myBalance.net))}</b> overall</>}
-            {myBalance.net >= -0.009 && myBalance.net <= 0.009 && <>You're all settled up</>}
-          </div>
-        )}
-        {balances.map((b) => (
-          <div className="balance-row" key={b.id}>
-            <span className="ledger-name balance-name"><Avatar name={b.name} avatar={travelers.find((traveler) => traveler.id === b.id)?.avatar} size={22} />{b.name}</span>
-            <span className={b.net > 0.009 ? "balance-pos" : b.net < -0.009 ? "balance-neg" : "balance-zero"}>
-              {b.net > 0.009 ? `gets back ${money(b.net)}` : b.net < -0.009 ? `owes ${money(Math.abs(b.net))}` : "settled"}
-            </span>
-          </div>
-        ))}
-        <div className="settle-divider">Who pays whom <span className="simplified-badge">simplified</span></div>
-        {transfers.length === 0 ? (
-          <div className="ledger-empty">Everyone's square.</div>
-        ) : transfers.map((t, i) => (
-          <div className="transfer-row" key={`${t.fromId}-${t.toId}-${i}`}>
-            <Avatar name={t.from} avatar={travelers.find((traveler) => traveler.name === t.from)?.avatar} size={24} /><span>{t.from}</span>
-            <Icon name="arrow" />
-            <Avatar name={t.to} avatar={travelers.find((traveler) => traveler.name === t.to)?.avatar} size={24} /><span>{t.to}</span>
-            <span className="transfer-amt">{money(t.amt)}</span>
-            <button className="mark-paid-button" onClick={() => markTransferPaid(t)} disabled={settlementSaving}>Mark paid</button>
-          </div>
-        ))}
-        {settlements.length > 0 && <><div className="settle-divider">Payment history <span className="simplified-badge">{settlements.length}</span></div><div className="settlement-history">{settlements.map((settlement) => { const from = travelers.find((traveler) => traveler.id === settlement.from_traveler); const to = travelers.find((traveler) => traveler.id === settlement.to_traveler); return <div className="settlement-row" key={settlement.id}><span className="settlement-check">✓</span><div><strong>{from?.name || "Someone"} paid {to?.name || "someone"}</strong><small>{money(settlement.amount)} · {new Date(settlement.settled_at || settlement.created_at).toLocaleDateString()}</small></div><button onClick={() => undoSettlement(settlement.id)}>Undo</button></div>; })}</div></>}
       </div>
       </section>
 
