@@ -1,6 +1,8 @@
-/* Shared mobile visual system. Light surfaces and readable foregrounds. */
-:root { --ink: #202731; --paper: #faf9f6; --paper-2: #f0f1f2; --line: #dfe2e6; --teal: #426b88; --teal-deep: #243b4e; --accent-lime: #e0eaf0; --accent-lilac: #eef1f4; }
-body { background: #eceef0; }
+/* Shared mobile visual system. Light surfaces and readable foregrounds.
+   Brand tokens (--ink, --paper, --teal, etc.) live in globals.css's :root only —
+   this file used to redeclare them here, in the "daylight palette" block below,
+   and again in the "restored grey-and-green palette" block; all three have been
+   folded into globals.css so there's one place that sets them. */
 button, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button:focus-visible, a:focus-visible { outline: 3px solid #426b88; outline-offset: 3px; }
@@ -158,7 +160,6 @@ button:disabled { cursor: default; }
 @media (max-width: 360px) { .app-content { padding-inline: 16px; } .journey-welcome h1 { font-size: 34px; } .saved-trip-card strong { font-size: 25px; } .poll-card { padding: 16px; } .poll-option-count { font-size: 10px; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *:before, *:after { animation: none !important; transition: none !important; } }
 /* One social space, with a quieter schedule alongside it. */
-:root { --line-strong: #cbd2da; --coral: #aa503f; --gold: #937440; }
 .timeline-discussion-link { display:flex; justify-content:space-between; gap:12px; width:100%; border:0; border-block:1px solid #e6e9ec; background:transparent; padding:15px 0; margin:12px 0; color:#67717c; text-align:left; font-size:11px; }
 .timeline-discussion-link span { color:var(--teal); font-weight:600; }
 .group-section-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:26px 0 14px; }
@@ -198,8 +199,6 @@ button:disabled { cursor: default; }
 .notification-copy small { color:#5d6c7c; opacity:1; font-size:10px; line-height:1.5; }
 .notification-feed-row { width:100%; gap:12px; }
 .notification-hint { padding:16px; color:#526575; font-size:12px; line-height:1.6; }
-:root { color-scheme:light; --paper:#ffffff; --paper-2:#f4f9fc; --line:#e0edf4; --action-bg:#dff2ff; --action-ink:#255777; }
-body { background:#f4faff; }
 .mobile-app-home, .trip-shell { background:#fff; }
 .app-header, .personal-app-header { background:#fff; border-color:#e5eff5; }
 .mobile-bottom-nav { background:rgba(255,255,255,.98); border:1px solid #dae8f1; box-shadow:0 6px 28px #396c9014; }
@@ -244,8 +243,8 @@ body { background:#f4faff; }
 @media(hover:hover) { .new-journey-button:hover, .poll-create-button:hover, .save-profile-button:hover, .fab:hover { background:#cfeaff; color:var(--action-ink); } }
 @media(max-width:380px) { .hero-nav .trip-wordmark { font-size:11px; letter-spacing:.09em; padding:8px; } .hero-nav .share-btn { padding:8px; font-size:10px; } }
 
-/* Restored grey-and-green palette; keep the current layouts and readable cards. */
-:root { --ink:#172c2b; --paper:#f1f3ef; --paper-2:#e8ede7; --line:#dbe2d9; --line-strong:#c7d3c9; --teal:#216557; --teal-deep:#173e35; --accent-lime:#dcf590; --accent-lilac:#e5eee7; --action-bg:#216557; --action-ink:#fff; }
+/* Restored grey-and-green palette; keep the current layouts and readable cards.
+   (Tokens for this palette now live in globals.css's :root.) */
 body { background:#e8ede7; }
 .mobile-app-home, .trip-shell, .app-header, .personal-app-header { background:var(--paper); border-color:var(--line); }
 .mobile-bottom-nav { background:#17352e; border-color:#17352e; box-shadow:0 8px 28px #17352e24; }

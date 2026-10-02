@@ -1,14 +1,22 @@
+/* Single source of truth for brand tokens — app/social-design.css used to redeclare
+   :root four times with slightly different values, which silently won the cascade
+   over everything defined here. These are those values, consolidated. */
 :root {
-  --ink: #1c2b2e;
-  --paper: #f6f1e6;
-  --paper-2: #efe8d6;
-  --teal: #1f6f63;
-  --teal-deep: #123f38;
-  --coral: #d0603f;
-  --gold: #b98a2e;
+  --ink: #172c2b;
+  --paper: #f1f3ef;
+  --paper-2: #e8ede7;
+  --teal: #216557;
+  --teal-deep: #173e35;
+  --coral: #aa503f;
+  --gold: #937440;
   --green: #1f6f45;
-  --line: #d8cfb8;
-  --line-strong: #c2b795;
+  --line: #dbe2d9;
+  --line-strong: #c7d3c9;
+  --accent-lime: #dcf590;
+  --accent-lilac: #e5eee7;
+  --action-bg: #216557;
+  --action-ink: #fff;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -535,7 +543,7 @@ button { font-family: inherit; }
 .bottom-nav-item small { font-size: 10px; }
 .bottom-nav-item.active { color: white; background: rgba(255,255,255,.12); }
 .trip-bottom-nav { display: none; }
-.trip-bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.trip-bottom-nav.expense-group-nav { grid-template-columns: repeat(3, 1fr); }
 
 /* ---------- Reliable activity composer ---------- */
 .activity-composer { border-radius: 18px; padding: 22px; }
