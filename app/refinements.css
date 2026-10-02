@@ -4,13 +4,21 @@ body { background:var(--paper); }
 /* Ambient teal/violet glow — the atmosphere the Kubbar deck gets from its
    glowing orbit rings. Without this the page reads as flat near-black. */
 .mobile-app-home, .trip-shell {
-  background:
-    radial-gradient(ellipse 620px 420px at 88% 0%, rgba(139,108,255,.20), transparent 60%),
-    radial-gradient(ellipse 560px 380px at 6% 10%, rgba(31,209,204,.16), transparent 58%),
-    var(--paper);
-  background-attachment: fixed, fixed, fixed;
+  position: relative;
+  background: var(--paper);
+  overflow: hidden;
 }
-.app-content { position: relative; }
+.mobile-app-home::before, .trip-shell::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 900px;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 680px 520px at 92% -8%, rgba(139,108,255,.40), transparent 62%),
+    radial-gradient(ellipse 620px 460px at 2% 4%, rgba(31,209,204,.30), transparent 58%);
+}
+.app-header, .app-content { position: relative; z-index: 1; }
 /* Signature teal-to-violet gradient headline accent (matches the Kubbar deck's
    hero treatment). Wins over social-design.css's flat color for this span since
    this file loads last. */
