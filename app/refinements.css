@@ -65,7 +65,7 @@ button:focus-visible, a:focus-visible { outline-color:#123f31; }
 .saved-trip-card .trip-card-cover { position:relative; inset:auto; z-index:auto; width:100%; height:176px; flex:none; border-radius:0; overflow:hidden; }
 .saved-trip-card .cover-photo { display:block; width:100%; height:100%; object-fit:cover; }
 .saved-trip-card .destination-card-copy { display:block; width:100%; border-radius:0; padding:18px 20px 20px; background:var(--paper-2); border-top:1px solid #324867; }
-.saved-trip-card strong { font-size:25px; line-height:1.25; color:#e2e7eb; }
+.saved-trip-card strong { font-size:25px; line-height:1.25; }
 .saved-trip-card small { color:#ccd6dd; opacity:1; background:var(--surface-2); border-color:#2f4665; font-size:11px; }
 .saved-trip-card .destination-card-copy > span { color:#b8c6d0; font-size:14px; }
 .destination-card-copy b { color:#c4eee1; background:var(--surface-2); }
@@ -78,7 +78,7 @@ button:focus-visible, a:focus-visible { outline-color:#123f31; }
 .app-view-intro p, .view-intro p, .group-hint { font-size:15px; line-height:1.6; color:#b8c6d0; opacity:1; }
 .feed-row { background:var(--paper-2); border:1px solid var(--line); border-radius:18px; padding:18px 16px; margin-bottom:12px; gap:14px; }
 .feed-row > div { min-width:0; }
-.feed-row strong { font-size:17px; line-height:1.4; color:#e2e7eb; overflow-wrap:anywhere; }
+.feed-row strong { font-size:17px; line-height:1.4; overflow-wrap:anywhere; }
 .feed-row small { font-size:14px; line-height:1.5; color:#b8c6d0; opacity:1; }
 .settle-destination-row .row-kicker { font:600 11px Inter,sans-serif; letter-spacing:.06em; opacity:1; color:#c4d0d8; margin-bottom:6px; }
 .feed-icon { width:46px; height:46px; flex-shrink:0; border-radius:14px; background:var(--surface-2); color:#c4eee1; }
