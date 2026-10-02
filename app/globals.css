@@ -1,20 +1,21 @@
-/* Single source of truth for brand tokens — app/social-design.css used to redeclare
-   :root four times with slightly different values, which silently won the cascade
-   over everything defined here. These are those values, consolidated. */
+/* Single source of truth for brand tokens. app/social-design.css and
+   app/refinements.css both used to redeclare :root with their own values for
+   these same custom properties; whichever loaded last silently won for every
+   token it touched. These are the values that were actually rendering
+   (refinements.css's, since it loads last), consolidated into one place. */
 :root {
-  --ink: #172c2b;
-  --paper: #f1f3ef;
-  --paper-2: #e8ede7;
-  --teal: #216557;
-  --teal-deep: #173e35;
-  --coral: #aa503f;
-  --gold: #937440;
+  --ink: #20382f;
+  --paper: #f3f5f4;
+  --paper-2: #e9eeeb;
+  --teal: #19664e;
+  --teal-deep: #154936;
+  --coral: #d0603f;
+  --gold: #b98a2e;
   --green: #1f6f45;
-  --line: #dbe2d9;
-  --line-strong: #c7d3c9;
-  --accent-lime: #dcf590;
-  --accent-lilac: #e5eee7;
-  --action-bg: #216557;
+  --line: #d8e2dc;
+  --line-strong: #c2b795;
+  --accent-lime: #dceee2;
+  --action-bg: #19664e;
   --action-ink: #fff;
   color-scheme: light;
 }
@@ -543,7 +544,7 @@ button { font-family: inherit; }
 .bottom-nav-item small { font-size: 10px; }
 .bottom-nav-item.active { color: white; background: rgba(255,255,255,.12); }
 .trip-bottom-nav { display: none; }
-.trip-bottom-nav.expense-group-nav { grid-template-columns: repeat(3, 1fr); }
+.trip-bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
 /* ---------- Reliable activity composer ---------- */
 .activity-composer { border-radius: 18px; padding: 22px; }

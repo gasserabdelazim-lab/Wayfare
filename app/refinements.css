@@ -1,5 +1,5 @@
-/* Final shared surface and type scale. Keep the same four navigation destinations. */
-:root { --paper:#f3f5f4; --paper-2:#e9eeeb; --ink:#20382f; --line:#d8e2dc; --teal:#19664e; --teal-deep:#154936; --action-bg:#19664e; --action-ink:#fff; --accent-lime:#dceee2; }
+/* Final shared surface and type scale. Keep the same four navigation destinations.
+   Brand tokens now live in globals.css's :root only. */
 body { background:#e8eeeb; }
 .mobile-app-home, .trip-shell { background:var(--paper); }
 .app-header, .personal-app-header { background:#fff; border-bottom:1px solid var(--line); }
