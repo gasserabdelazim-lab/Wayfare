@@ -26,12 +26,29 @@ body { background:var(--paper); }
    hero treatment). Wins over social-design.css's flat color for this span since
    this file loads last. */
 .journey-welcome h1 span, .app-welcome h1 span, .home-hero h1 span, .profile-stats strong, .trip-summary strong { background: linear-gradient(90deg, var(--teal), var(--purple)); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; }
-.app-header, .personal-app-header { background:rgba(9,20,31,.85); backdrop-filter: blur(14px); border-bottom:1px solid var(--line); }
+/* Carry the same signature teal-to-violet gradient through the rest of the
+   app's headings and emphasis points, not just the hero line, so the
+   "handwriting" treatment reads as one consistent system. */
+.section-title-row h2,
+.simple-app-view > h1,
+.saved-trip-card strong,
+.feed-row strong,
+.expense-ledger-amounts b,
+.bottom-nav-item.active small,
+.profile-identity h2 {
+  background: linear-gradient(90deg, var(--teal), var(--purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 800;
+}
+.bottom-nav-item.active svg { color: var(--teal); }
+.app-header, .personal-app-header { background:rgba(10,20,39,.85); backdrop-filter: blur(14px); border-bottom:1px solid var(--line); }
 .app-header p { color:#b3c2cc; opacity:1; font-size:13px; }
 .app-content { padding-top:24px; }
-.mobile-bottom-nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); background:#09141f; border:1px solid #2d4362; border-radius:22px; box-shadow:0 6px 28px #183d3020; }
+.mobile-bottom-nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); background:var(--paper-2); border:1px solid #2d4362; border-radius:22px; box-shadow:0 6px 28px #183d3020; }
 .bottom-nav-item { color:#b9c7d0; min-width:0; min-height:56px; }
-.bottom-nav-item.active { background:#101d33; color:#d6f3e8; }
+.bottom-nav-item.active { background:var(--surface-2); color:#d6f3e8; }
 .bottom-nav-item small { font-size:12px; font-weight:600; }
 .bottom-nav-item svg { width:23px; height:23px; }
 button:focus-visible, a:focus-visible { outline-color:#123f31; }
@@ -43,29 +60,29 @@ button:focus-visible, a:focus-visible { outline-color:#123f31; }
 .trip-search { font-size:16px; border-color:#2d4362; min-height:48px; transition: border-color .15s, box-shadow .15s; }
 .trip-search:focus { outline:none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(139,108,255,.18); }
 /* A photo and a full-width white caption, not overlapping rounded panels. */
-.saved-trip-row .saved-trip-card { display:flex; flex-direction:column; padding:0; border:1px solid #2e4463; border-radius:22px; background:#09141f; box-shadow:0 10px 32px rgba(139,108,255,.08), 0 6px 20px rgba(31,209,204,.06); transition: border-color .15s, box-shadow .15s, transform .15s; }
+.saved-trip-row .saved-trip-card { display:flex; flex-direction:column; padding:0; border:1px solid #2e4463; border-radius:22px; background:var(--paper-2); box-shadow:0 10px 32px rgba(139,108,255,.08), 0 6px 20px rgba(31,209,204,.06); transition: border-color .15s, box-shadow .15s, transform .15s; }
 .saved-trip-row .saved-trip-card:hover { border-color: rgba(31,209,204,.5); box-shadow: 0 14px 40px rgba(139,108,255,.16), 0 8px 26px rgba(31,209,204,.12); transform: translateY(-2px); }
 .saved-trip-card .trip-card-cover { position:relative; inset:auto; z-index:auto; width:100%; height:176px; flex:none; border-radius:0; overflow:hidden; }
 .saved-trip-card .cover-photo { display:block; width:100%; height:100%; object-fit:cover; }
-.saved-trip-card .destination-card-copy { display:block; width:100%; border-radius:0; padding:18px 20px 20px; background:#09141f; border-top:1px solid #324867; }
+.saved-trip-card .destination-card-copy { display:block; width:100%; border-radius:0; padding:18px 20px 20px; background:var(--paper-2); border-top:1px solid #324867; }
 .saved-trip-card strong { font-size:25px; line-height:1.25; color:#e2e7eb; }
-.saved-trip-card small { color:#ccd6dd; opacity:1; background:#0d1a2d; border-color:#2f4665; font-size:11px; }
+.saved-trip-card small { color:#ccd6dd; opacity:1; background:var(--surface-2); border-color:#2f4665; font-size:11px; }
 .saved-trip-card .destination-card-copy > span { color:#b8c6d0; font-size:14px; }
-.destination-card-copy b { color:#c4eee1; background:#0e1e31; }
+.destination-card-copy b { color:#c4eee1; background:var(--surface-2); }
 .plan-delete-button { width:38px; height:38px; background:rgba(9,20,31,.82); backdrop-filter: blur(6px); color:#b8c6d0; border-color:#2e4564; transition: color .12s, border-color .12s; }
 .plan-delete-button:hover { color: var(--coral); border-color: var(--coral); }
 .header-add-button { box-shadow: 0 6px 18px rgba(31,209,204,.28), 0 2px 24px rgba(139,108,255,.18); }
-.journey-shortcuts > button { background:#0e1e31; border-color:#2d4362; padding:18px; }
+.journey-shortcuts > button { background:var(--surface-2); border-color:#2d4362; padding:18px; }
 .journey-shortcuts strong { font-size:16px; }
 .journey-shortcuts small { font-size:13px; }
 .app-view-intro p, .view-intro p, .group-hint { font-size:15px; line-height:1.6; color:#b8c6d0; opacity:1; }
-.feed-row { background:#09141f; border:1px solid var(--line); border-radius:18px; padding:18px 16px; margin-bottom:12px; gap:14px; }
+.feed-row { background:var(--paper-2); border:1px solid var(--line); border-radius:18px; padding:18px 16px; margin-bottom:12px; gap:14px; }
 .feed-row > div { min-width:0; }
 .feed-row strong { font-size:17px; line-height:1.4; color:#e2e7eb; overflow-wrap:anywhere; }
 .feed-row small { font-size:14px; line-height:1.5; color:#b8c6d0; opacity:1; }
 .settle-destination-row .row-kicker { font:600 11px Inter,sans-serif; letter-spacing:.06em; opacity:1; color:#c4d0d8; margin-bottom:6px; }
-.feed-icon { width:46px; height:46px; flex-shrink:0; border-radius:14px; background:#0f1d31; color:#c4eee1; }
-.cost-card, .settle-card, .profile-card { background:#09141f; border:1px solid var(--line); box-shadow:0 5px 18px #173e3508; }
+.feed-icon { width:46px; height:46px; flex-shrink:0; border-radius:14px; background:var(--surface-2); color:#c4eee1; }
+.cost-card, .settle-card, .profile-card { background:var(--paper-2); border:1px solid var(--line); box-shadow:0 5px 18px #173e3508; }
 .cost-sub, .settle-card p, .expense-only-banner p { color:#b8c6d0; opacity:1; font-size:14px; line-height:1.6; }
 .ledger-row, .balance-row { font-size:16px; padding-block:16px; }
 .ledger-sub, .expense-note { color:#b8c6d0; opacity:1; font-size:13px; line-height:1.5; }
@@ -77,15 +94,15 @@ button:focus-visible, a:focus-visible { outline-color:#123f31; }
 .expense-title-line { font-size:16px; line-height:1.45; overflow-wrap:anywhere; }
 .category-badge { width:46px; height:46px; border-radius:14px; }
 .category-badge svg { display:block; width:25px; height:25px; }
-.ledger-row-right .icon-btn { min-width:42px; min-height:42px; background:#0b1729; border-radius:12px; }
-.expense-composer { padding:18px; background:#0a1625; border-color:#2e4463; }
+.ledger-row-right .icon-btn { min-width:42px; min-height:42px; background:var(--surface-2); border-radius:12px; }
+.expense-composer { padding:18px; background:var(--paper-2); border-color:#2e4463; }
 .expense-composer input, .expense-composer select, .expense-composer textarea { font-size:16px; min-height:48px; border-color:#2b4160; }
 .expense-composer-head > span { font-size:12px; }
 .category-picker { gap:8px; }
 .category-chip { min-height:42px; font-size:13px; border-color:#2c4260; }
 .expense-icon-preview { grid-column:1/-1; display:flex; align-items:center; gap:9px; color:#ccd6dd; font-size:13px; line-height:1.5; }
 .expense-icon-preview svg { flex-shrink:0; }
-.expense-icon-preview button { margin-left:auto; background:#09141f; color:#c4eee1; border:1px solid #2b4160; border-radius:10px; padding:8px; min-height:40px; }
+.expense-icon-preview button { margin-left:auto; background:var(--paper-2); color:#c4eee1; border:1px solid #2b4160; border-radius:10px; padding:8px; min-height:40px; }
 .expense-subhead strong { font-size:16px; }
 .expense-subhead small, .split-methods small, .split-person em, .settlement-row small { opacity:1; color:#b8c6d0; font-size:13px; }
 .split-methods strong, .split-person, .expense-participants button, .settlement-row strong { font-size:15px; }
@@ -96,7 +113,7 @@ button:focus-visible, a:focus-visible { outline-color:#123f31; }
 .notification-copy strong { font-size:16px; }
 .notification-copy small { font-size:13px; color:#b8c6d0; }
 .notification-feed-row { padding:18px 14px; }
-.trip-hero .hero-content { border-radius:0; background:#09141f; border-bottom:1px solid var(--line); }
+.trip-hero .hero-content { border-radius:0; background:var(--paper-2); border-bottom:1px solid var(--line); }
 @media(max-width:480px) {
   .app-content { padding-inline:16px; }
   .expense-basic-grid, .expense-money-grid { grid-template-columns:minmax(0,1fr); }
@@ -104,4 +121,16 @@ button:focus-visible, a:focus-visible { outline-color:#123f31; }
   .cost-card, .settle-card { padding:18px; }
   .saved-trip-card .trip-card-cover { height:164px; }
 }
+/* Loading skeleton for the Plans/Settle lists — shown while account + trips
+   are resolving, so the empty-state copy never flashes before real data. */
+.plans-loading-skeleton { padding-top: 6px; }
+.plans-loading-skeleton .skeleton-line { height: 16px; width: 150px; border-radius: 8px; margin-bottom: 22px; }
+.plans-loading-skeleton .skeleton-card { height: 230px; border-radius: 22px; margin-bottom: 16px; }
+.plans-loading-skeleton .skeleton-line,
+.plans-loading-skeleton .skeleton-card {
+  background: linear-gradient(100deg, var(--paper-2) 30%, var(--surface-2) 50%, var(--paper-2) 70%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *, *:before, *:after { transition:none!important; animation:none!important; } }

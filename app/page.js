@@ -137,6 +137,7 @@ export default function Home() {
   const [activeView, setActiveView] = useState("plans");
   const notifications = useUpdateNotifications(account.user?.id, activeView === "updates");
   const [trips, setTrips] = useState([]);
+  const [tripsReady, setTripsReady] = useState(false);
   const [recentActivities, setRecentActivities] = useState([]);
   const [groupName, setGroupName] = useState("");
   const [groupCurrency, setGroupCurrency] = useState("EUR");
@@ -202,6 +203,7 @@ export default function Home() {
     if (!account.user) {
       setTrips([]);
       setRecentActivities([]);
+      setTripsReady(true);
       return;
     }
     let cancelled = false;
@@ -218,12 +220,14 @@ export default function Home() {
         if (!cancelled) {
           setTrips([]);
           setRecentActivities([]);
+          setTripsReady(true);
         }
         return;
       }
       const { data: accountTrips } = await supabase.from("trips").select("id,name,start_date,end_date,created_at,currency,duration_days").in("id", accountTripIds);
       if (cancelled) return;
       setTrips((accountTrips || []).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))));
+      setTripsReady(true);
       const { data: accountActivities } = await supabase.from("activities").select("id,trip_id,name,created_at").in("trip_id", accountTripIds).order("created_at", { ascending: false }).limit(20);
       if (!cancelled) setRecentActivities(accountActivities || []);
     }
@@ -577,6 +581,14 @@ export default function Home() {
     </div>
   );
 
+  const plansLoadingBlock = (
+    <div className="plans-loading-skeleton" aria-hidden="true">
+      <div className="skeleton-line skeleton-line-title" />
+      <div className="skeleton-card" />
+      <div className="skeleton-card" />
+    </div>
+  );
+
   const emptyPlansHeroBlock = (
     <div className="app-welcome journey-welcome">
       <div className="eyebrow">Hey {yourName.trim().split(/\s+/)[0] || "traveler"}, where next?</div>
@@ -651,7 +663,7 @@ export default function Home() {
       <div className="app-content">
         {activeView === "plans" && (
           <section className="plans-home-view">
-            {planTrips.length > 0 ? savedTripsBlock : emptyPlansHeroBlock}
+            {!tripsReady ? plansLoadingBlock : (planTrips.length > 0 ? savedTripsBlock : emptyPlansHeroBlock)}
             {journeyShortcutsBlock}
             {quickCreateBlock}
           </section>
@@ -660,7 +672,7 @@ export default function Home() {
         {activeView === "settle" && <section className="simple-app-view settle-home-view">
           <div className="eyebrow">Shared expenses</div><h1>Settle up</h1><p className="view-intro">Use a trip, or create an everyday group without planning anything first. Tap the + up top to start one.</p>
 
-          {(expenseGroups.length > 0 || planTrips.length > 0) ? settleListsBlock : <EmptyView title="Nothing to settle yet" text="Tap the + up top to create an expense group, or make a trip from Plans." />}
+          {!tripsReady ? plansLoadingBlock : ((expenseGroups.length > 0 || planTrips.length > 0) ? settleListsBlock : <EmptyView title="Nothing to settle yet" text="Tap the + up top to create an expense group, or make a trip from Plans." />)}
           {groupFormCard}
         </section>}
 
