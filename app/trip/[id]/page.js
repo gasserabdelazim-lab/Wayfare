@@ -1305,7 +1305,6 @@ export default function TripPage() {
       exchangeRate: cost.exchange_rate != null ? String(cost.exchange_rate) : "1",
       splitMethod: cost.split_method || "equal",
       category: cost.category || "other",
-      categoryManual: true,
       participantIds,
       splitValues,
       notes: cost.notes || "",
@@ -1832,19 +1831,11 @@ export default function TripPage() {
         <div className="expense-composer" ref={costComposerRef}>
           <div className="expense-composer-head"><div><span className="eyebrow">{editingCostId ? "Editing purchase" : "New shared purchase"}</span><h3>{editingCostId ? "Edit expense" : "Add an expense"}</h3></div>{editingCostId ? <button type="button" className="cancel-edit-link" onClick={cancelEditExtraCost}>Cancel edit</button> : <span>Split it your way</span>}</div>
           <div className="expense-basic-grid">
-            <label><span className="field-label">Description</span><input aria-label="Expense description" placeholder="e.g. Car rental or train tickets" value={costForm.desc} onChange={(event) => { const desc = event.target.value; setCostForm((current) => ({ ...current, desc, category: current.categoryManual ? current.category : inferExpense(desc).category })); }} /></label>
+            <label><span className="field-label">Description</span><input aria-label="Expense description" placeholder="e.g. Car rental or train tickets" value={costForm.desc} onChange={(event) => { const desc = event.target.value; setCostForm((current) => ({ ...current, desc, category: inferExpense(desc).category })); }} /></label>
             <label><span className="field-label">Who paid?</span><select className="paid-select" value={costForm.paidBy} onChange={(event) => setCostForm({ ...costForm, paidBy: event.target.value })}><option value="">Choose payer</option>{travelers.map((traveler) => <option key={traveler.id} value={traveler.id}>{traveler.name}</option>)}</select></label>
           </div>
-          <div className="category-picker" role="group" aria-label="Expense category">
-            {EXPENSE_CATEGORIES.map((item) => (
-              <button type="button" key={item.id} aria-pressed={costForm.category === item.id} className={`category-chip ${costForm.category === item.id ? "selected" : ""}`} onClick={() => setCostForm({ ...costForm, category: item.id, categoryManual: true })}>
-                <Icon name={item.icon} style={{ width: 15, height: 15 }} />
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
           <div className="expense-money-grid">
-            <div className="expense-icon-preview"><ExpenseIcon name={expenseAppearance(costForm.desc, costForm.category).icon} /><span>{costForm.categoryManual ? "Your category" : "Suggested category"}: {categoryInfo(costForm.category).label}</span>{costForm.categoryManual && <button type="button" onClick={() => setCostForm((current) => ({ ...current, categoryManual: false, category: inferExpense(current.desc).category }))}>Auto-detect</button>}</div>
+            <div className="expense-icon-preview"><ExpenseIcon name={expenseAppearance(costForm.desc, costForm.category).icon} /><span>{costForm.desc ? categoryInfo(costForm.category).label : "Start typing to detect a category"}</span></div>
             <label><span className="field-label">Amount</span><div className="expense-amount-input"><span>{CURRENCIES[costForm.currency]?.symbol}</span><input aria-label="Expense amount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" value={costForm.amt} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setCostForm({ ...costForm, amt: event.target.value })} /></div></label>
             <label><span className="field-label">Currency</span><select value={costForm.currency} onChange={(event) => changeExpenseCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.label}</option>)}</select></label>
           </div>
