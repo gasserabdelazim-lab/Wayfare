@@ -571,6 +571,18 @@ export default function TripPage() {
     return () => clearInterval(timer);
   }, [destinationPhotos]);
 
+  // The compact trip/group "Edit" popover uses a native <details> so it needs
+  // no extra state, but it should close itself when you tap elsewhere.
+  useEffect(() => {
+    function handleOutsideClick(event) {
+      document.querySelectorAll("details.compact-edit-trigger[open]").forEach((node) => {
+        if (!node.contains(event.target)) node.removeAttribute("open");
+      });
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
   const load = useCallback(async () => {
     const { data: tripData, error: tripError } = await supabase.from("trips").select("*").eq("id", tripId).maybeSingle();
     if (tripError || !tripData) {
@@ -1510,6 +1522,46 @@ export default function TripPage() {
         <div className="eyebrow">{activeTab === "plan" ? `${tripDisplayName} itinerary` : activeTab === "settle" ? "Shared expenses" : activeTab === "updates" ? "Latest activity" : "Your personal space"}</div>
         <h2>{activeTab === "plan" ? "Activities & ideas" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "My profile"}</h2>
         {activeTab === "profile" && <p className="personal-view-intro">Your details, your style. One profile for every plan.</p>}
+
+        {activeTab === "plan" && !expenseOnly && <details className="compact-edit-trigger">
+          <summary aria-label="Edit trip details" title="Edit trip details"><Icon name="edit" style={{ width: 15, height: 15 }} /></summary>
+          <div className="trip-details-body">
+            <div className="compact-edit-heading"><span className="eyebrow">Trip administration</span><strong>Trip details</strong></div>
+            <label className="field-label">Trip name</label>
+            <div className="trip-name-edit">
+              <input aria-label="Trip name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Lisbon Weekend" />
+              <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
+            </div>
+            <label className="field-label">Trip currency</label>
+            <select aria-label="Trip currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
+            <label className="field-label">Trip dates</label>
+            <div className="trip-profile-dates">
+              <label><span>Starts</span><input type="date" value={tripDateDraft.start} onChange={(event) => setTripDateDraft((current) => ({ ...current, start: event.target.value, end: current.end && current.end < event.target.value ? "" : current.end }))} /></label>
+              <label><span>Ends</span><input type="date" min={tripDateDraft.start || undefined} value={tripDateDraft.end} disabled={!tripDateDraft.start} onChange={(event) => setTripDateDraft((current) => ({ ...current, end: event.target.value }))} /></label>
+              <button type="button" onClick={updateTripDates}>Save dates</button>
+            </div>
+            <label className="field-label">Trip duration</label>
+            <div className="profile-duration-control"><input key={tripDays} aria-label="Trip duration in days" type="number" min="1" max="30" defaultValue={tripDays} onBlur={(event) => updateTripDuration(event.target.value)} /><span>days · creates Day 1 to Day {tripDays}</span></div>
+            <div className="profile-members"><div className="field-label">Travelers</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
+            <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage travelers" : "View travelers"}</button>
+          </div>
+        </details>}
+
+        {activeTab === "settle" && expenseOnly && <details className="compact-edit-trigger">
+          <summary aria-label="Edit group details" title="Edit group details"><Icon name="edit" style={{ width: 15, height: 15 }} /></summary>
+          <div className="trip-details-body">
+            <div className="compact-edit-heading"><span className="eyebrow">Group administration</span><strong>Group details</strong></div>
+            <label className="field-label">Group name</label>
+            <div className="trip-name-edit">
+              <input aria-label="Group name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Roommates" />
+              <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
+            </div>
+            <label className="field-label">Group currency</label>
+            <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
+            <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
+            <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage members" : "View members"}</button>
+          </div>
+        </details>}
       </header>
       {(activeTab === "settle" || activeTab === "updates") && <div className="group-context-switch"><span><small>Current group</small><strong>{tripDisplayName}</strong></span></div>}
 
@@ -1519,29 +1571,6 @@ export default function TripPage() {
         <div><strong>{counts.waiting}</strong><span>New ideas</span></div>
         <div className="summary-budget"><strong>{money(share)}</strong><span>Estimated per person</span></div>
       </div>}
-
-      {activeTab === "plan" && !expenseOnly && <details className="trip-details-card">
-        <summary><div><span className="eyebrow">Trip administration</span><strong>Trip details</strong><small>Dates, duration, currency, and travelers</small></div><b>Edit</b></summary>
-        <div className="trip-details-body">
-          <label className="field-label">Trip name</label>
-          <div className="trip-name-edit">
-            <input aria-label="Trip name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Lisbon Weekend" />
-            <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
-          </div>
-          <label className="field-label">Trip currency</label>
-          <select aria-label="Trip currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
-          <label className="field-label">Trip dates</label>
-          <div className="trip-profile-dates">
-            <label><span>Starts</span><input type="date" value={tripDateDraft.start} onChange={(event) => setTripDateDraft((current) => ({ ...current, start: event.target.value, end: current.end && current.end < event.target.value ? "" : current.end }))} /></label>
-            <label><span>Ends</span><input type="date" min={tripDateDraft.start || undefined} value={tripDateDraft.end} disabled={!tripDateDraft.start} onChange={(event) => setTripDateDraft((current) => ({ ...current, end: event.target.value }))} /></label>
-            <button type="button" onClick={updateTripDates}>Save dates</button>
-          </div>
-          <label className="field-label">Trip duration</label>
-          <div className="profile-duration-control"><input key={tripDays} aria-label="Trip duration in days" type="number" min="1" max="30" defaultValue={tripDays} onBlur={(event) => updateTripDuration(event.target.value)} /><span>days · creates Day 1 to Day {tripDays}</span></div>
-          <div className="profile-members"><div className="field-label">Travelers</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
-          <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage travelers" : "View travelers"}</button>
-        </div>
-      </details>}
 
       {activeTab === "plan" && !expenseOnly && <div className="trip-day-planner"><div className="trip-day-planner-head"><div><span className="eyebrow">{tripDays}-day trip</span><strong>Choose a day to add an activity</strong></div><small>{trip.start_date ? formatTripRange(trip.start_date, trip.end_date) : "Add dates from Trip details whenever you are ready"}</small></div><div className="trip-day-buttons">{dayOptions.map((day, index) => { const count = activities.filter((activity) => (activity.day_label || "Day 1") === day).length; const dateText = formatTripDayDate(trip.start_date, index); return <button key={day} onClick={() => { setNewActivity((current) => ({ ...current, day_label: day, day_date: tripDayISO(trip.start_date, index) || current.day_date })); setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}><strong>{day}</strong><small>{dateText ? `${dateText} · ` : ""}{count} activit{count === 1 ? "y" : "ies"}</small></button>; })}</div></div>}
 
@@ -1727,20 +1756,6 @@ export default function TripPage() {
       </section>
 
       <section className={activeTab === "settle" ? "tab-panel" : "tab-panel is-hidden"}>
-      {expenseOnly && <details className="trip-details-card expense-group-details">
-        <summary><div><span className="eyebrow">Group administration</span><strong>Group details</strong><small>Name, currency, and members</small></div><b>Edit</b></summary>
-        <div className="trip-details-body">
-          <label className="field-label">Group name</label>
-          <div className="trip-name-edit">
-            <input aria-label="Group name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Roommates" />
-            <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
-          </div>
-          <label className="field-label">Group currency</label>
-          <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
-          <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
-          <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage members" : "View members"}</button>
-        </div>
-      </details>}
       <div className="sec-head"><h2>Settle up</h2></div>
       <div className="settle-card">
         {myBalance && (
