@@ -6,6 +6,7 @@ import NavIcon from "../components/NavIcon";
 import ExpenseIcon from "../components/ExpenseIcon";
 import AccountPanel from "../components/AccountPanel";
 import GuidedTour from "../components/GuidedTour";
+import { ActionBar, Field, PlusButton, Sheet } from "../components/trip/ui";
 import { UpdateBadge, UpdateToast, UpdatesFeed } from "../components/UpdateNotifications";
 import { useUpdateNotifications } from "../lib/useUpdateNotifications";
 import { destinationInfo, findDestinationPhotos } from "../lib/destinations";
@@ -40,7 +41,7 @@ const NAV_ITEMS = [
 
 const HOME_TOUR = [
   { title: "Welcome to Palvoya", body: "Plan trips together, vote on ideas and split the costs. Here is a quick look around." },
-  { target: ".header-add-button", title: "Start something new", body: "Tap here to create a trip, or a group to just split everyday expenses." },
+  { target: ".action-bar", title: "Start something new", body: "Tap + to create a trip or an expense group, or join one with an invite code." },
   { target: ".home-bottom-nav .bottom-nav-item:nth-child(1)", enter: ".home-bottom-nav .bottom-nav-item:nth-child(1)", title: "Plans are your trips", body: "Every trip you plan lives here. Open one to build the itinerary with your crew." },
   { target: ".home-bottom-nav .bottom-nav-item:nth-child(2)", enter: ".home-bottom-nav .bottom-nav-item:nth-child(2)", title: "Settle up keeps it fair", body: "Add what you paid and Palvoya picks the category and icon for you, then shows who owes whom." },
   { target: ".home-bottom-nav .bottom-nav-item:nth-child(3)", enter: ".home-bottom-nav .bottom-nav-item:nth-child(3)", title: "Updates, all in one feed", body: "New votes, expenses and changes from your group land here. The badge counts what is unread." },
@@ -152,6 +153,11 @@ export default function Home() {
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [tripSearch, setTripSearch] = useState("");
+  const [tripFilter, setTripFilter] = useState("active");
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinBusy, setJoinBusy] = useState(false);
+  const [joinError, setJoinError] = useState("");
   const createRef = useRef(null);
   function openCreate() {
     setCreateOpen(true);
@@ -593,11 +599,28 @@ export default function Home() {
     </main>
   );
 
-  const filteredPlanTrips = planTrips.filter((trip) => trip.name.toLowerCase().includes(tripSearch.trim().toLowerCase()));
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const isPastTrip = (trip) => Boolean(trip.end_date) && trip.end_date < todayISO;
+  const filteredPlanTrips = planTrips
+    .filter((trip) => tripFilter === "all" || (tripFilter === "past" ? isPastTrip(trip) : !isPastTrip(trip)))
+    .filter((trip) => trip.name.toLowerCase().includes(tripSearch.trim().toLowerCase()));
+
+  async function joinWithCode(event) {
+    event.preventDefault();
+    const match = joinCode.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (!match) { setJoinError("Paste the invite link or code your friend sent you."); return; }
+    setJoinBusy(true);
+    setJoinError("");
+    const { data, error: previewError } = await supabase.rpc("preview_trip_invite", { invite_token: match[0] });
+    setJoinBusy(false);
+    const found = Array.isArray(data) ? data[0] : data;
+    if (previewError || !found?.trip_id) { setJoinError("That invite is not valid or has expired. Ask for a new one."); return; }
+    router.push(`/trip/${found.trip_id}?invite=${match[0]}`);
+  }
 
   const savedTripsBlock = planTrips.length > 0 && (
     <div className="saved-trips">
-      <div className="section-title-row"><h2>Your next chapters</h2><span>{planTrips.length} trips</span></div>
+      <div className="section-title-row"><h2>Your next chapters</h2><span>{filteredPlanTrips.length} {filteredPlanTrips.length === 1 ? "trip" : "trips"}</span></div>
       <input className="trip-search" aria-label="Search your trips" placeholder="Find a trip…" value={tripSearch} onChange={(event) => setTripSearch(event.target.value)} />
       {filteredPlanTrips.map((trip) => (
         <div className="saved-trip-row" key={trip.id}>
@@ -608,6 +631,7 @@ export default function Home() {
           <button className="plan-delete-button" aria-label={`Delete ${trip.name} plan`} title="Delete plan" onClick={() => setDeletePlanTarget(trip)}>×</button>
         </div>
       ))}
+      {!tripSearch && planTrips.length > 0 && !filteredPlanTrips.length && <p className="search-empty" role="status">{tripFilter === "past" ? "No past trips yet." : "No active trips. Switch to All trips to see everything."}</p>}
       {tripSearch && !filteredPlanTrips.length && <p className="search-empty" role="status">No trips match “{tripSearch}”. Try another name.</p>}
     </div>
   );
@@ -624,7 +648,7 @@ export default function Home() {
     <div className="app-welcome journey-welcome">
       <div className="eyebrow">Hey {yourName.trim().split(/\s+/)[0] || "traveler"}, where next?</div>
       <h1>Good trips.<br /><span>Great company.</span></h1>
-      <p>A little planning. A lot to look forward to. Tap the + up top to start your first trip.</p>
+      <p>A little planning. A lot to look forward to. Tap the + below to start your first trip.</p>
     </div>
   );
 
@@ -684,9 +708,10 @@ export default function Home() {
       <header className="app-header">
         <div><div className="brand-mark dark">PALVOYA</div><p>Plan together. Settle simply.</p></div>
         <div className="app-header-actions">
-          {(activeView === "plans" || activeView === "settle") && (
-            <button type="button" className="header-add-button" onClick={handleHeaderAdd}><span aria-hidden="true">＋</span>{activeView === "settle" ? "New group" : "New trip"}</button>
-          )}
+          <button type="button" className="header-bell-button" aria-label={notifications.unread ? `${notifications.unread} unread updates` : "Updates"} onClick={() => navigateView("updates")}>
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 8h18c0-1-3-1-3-8Z" /><path d="M10 20h4" /></svg>
+            {notifications.unread > 0 && <b className="topbar-dot" />}
+          </button>
           <button type="button" className="header-profile-button" aria-label="Open your profile" onClick={() => navigateView("profile")}><AvatarPreview name={yourName} avatar={profileAvatar} /></button>
         </div>
       </header>
@@ -701,9 +726,9 @@ export default function Home() {
         )}
 
         {activeView === "settle" && <section className="simple-app-view settle-home-view">
-          <div className="eyebrow">Shared expenses</div><h1>Settle up</h1><p className="view-intro">Use a trip, or create an everyday group without planning anything first. Tap the + up top to start one.</p>
+          <div className="eyebrow">Shared expenses</div><h1>Settle up</h1><p className="view-intro">Use a trip, or create an everyday group without planning anything first. Tap the + below to start one.</p>
 
-          {!tripsReady ? plansLoadingBlock : ((expenseGroups.length > 0 || planTrips.length > 0) ? settleListsBlock : <EmptyView title="Nothing to settle yet" text="Tap the + up top to create an expense group, or make a trip from Plans." />)}
+          {!tripsReady ? plansLoadingBlock : ((expenseGroups.length > 0 || planTrips.length > 0) ? settleListsBlock : <EmptyView title="Nothing to settle yet" text="Tap the + below to create an expense group, or make a trip from Plans." />)}
           {groupFormCard}
         </section>}
 
@@ -803,6 +828,33 @@ export default function Home() {
       {actionNotice && <div className="action-notice" role="status">{actionNotice}</div>}
       <UpdateToast notification={notifications.toast} onOpen={() => { notifications.dismiss(); navigateView("updates"); }} onDismiss={notifications.dismiss} />
 
+      {activeView === "plans" && (
+        <ActionBar className="with-plus home-bar">
+          <label className="select-pill">
+            <select value={tripFilter} onChange={(event) => setTripFilter(event.target.value)} aria-label="Which trips to show">
+              <option value="active">Active trips</option>
+              <option value="past">Past trips</option>
+              <option value="all">All trips</option>
+            </select>
+            <svg className="select-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 9 5-4 5 4M7 15l5 4 5-4" /></svg>
+          </label>
+          <button type="button" className="join-code-button" onClick={() => { setJoinError(""); setJoinCode(""); setJoinOpen(true); }}>Join with code</button>
+          <PlusButton label="New trip" onClick={handleHeaderAdd} />
+        </ActionBar>
+      )}
+      {activeView === "settle" && (
+        <ActionBar className="with-plus home-bar">
+          <span className="bar-label">New expense group</span>
+          <PlusButton label="New group" onClick={handleHeaderAdd} />
+        </ActionBar>
+      )}
+      <Sheet open={joinOpen} title="Join with code" onClose={() => setJoinOpen(false)}>
+        <form className="sheet-form" onSubmit={joinWithCode}>
+          <Field label="Invite link or code"><input autoFocus value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder="Paste the link you were sent" /></Field>
+          {joinError && <p className="form-error">{joinError}</p>}
+          <button type="submit" className="sheet-submit" disabled={joinBusy || !joinCode.trim()}>{joinBusy ? "Checking…" : "Join trip"}</button>
+        </form>
+      </Sheet>
       <nav className="mobile-bottom-nav home-bottom-nav" aria-label="Main navigation">
         {NAV_ITEMS.map((item) => <button key={item.id} className={`bottom-nav-item ${activeView === item.id ? "active" : ""}`} onClick={() => navigateView(item.id)}>{item.id === "updates" ? <UpdateBadge count={notifications.unread} /> : <NavIcon name={item.icon} />}<small>{item.label}</small></button>)}
       </nav>

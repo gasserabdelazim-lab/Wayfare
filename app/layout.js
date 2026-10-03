@@ -3,6 +3,7 @@ import "leaflet/dist/leaflet.css";
 import "./social-design.css";
 import "./refinements.css";
 import "./wayfare-ui.css";
+import "./trip-features.css";
 import InstallPrompt from "../components/InstallPrompt";
 
 export const viewport = { themeColor: "#0a1324", colorScheme: "dark" };
