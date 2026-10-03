@@ -17,6 +17,14 @@ function FitRoute({ points }) {
   const map = useMap();
 
   useEffect(() => {
+    const container = map.getContainer();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+
+  useEffect(() => {
     if (!points.length) return undefined;
     const timer = setTimeout(() => {
       map.invalidateSize();
@@ -137,7 +145,7 @@ export default function TripMap({ activities, selectedDay, statusFor, onActivity
             <div className="map-stop-block" key={activity.id}>
               <button type="button" onClick={() => onActivitySelect(activity.id)}>
                 <span className={`map-stop-number marker-${statusFor(activity.id)}`}>{index + 1}</span>
-                <span><strong>{activity.name}</strong><small>{activity.time_text || "Flexible time"} · {activity.location}</small></span>
+                <span><strong>{activity.name}</strong><small>{activity.time_text || "Flexible time"} · {String(activity.location || "").split(",")[0]}</small></span>
               </button>
               {legs[index] && <div className="map-leg" aria-label={`${formatMinutes(legs[index].minutes)} ${legs[index].mode} to the next stop`}>
                 <i aria-hidden="true" />
