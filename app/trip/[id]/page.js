@@ -1496,15 +1496,16 @@ export default function TripPage() {
   async function markTransferPaid(transfer) {
     if (settlementSaving) return;
     setSettlementSaving(true);
-    const { error } = await supabase.from("settlements").insert({
+    const row = {
       trip_id: tripId,
       from_traveler: transfer.fromId,
       to_traveler: transfer.toId,
       amount: roundMoney(transfer.amt),
-      currency,
-      note: "Marked paid in Palvoya",
-      settled_at: new Date().toISOString(),
-    });
+    };
+    let { error } = await supabase.from("settlements").insert({ ...row, currency, note: "Marked paid in Palvoya", settled_at: new Date().toISOString() });
+    if (error && /schema cache|column/i.test(error.message || "")) {
+      ({ error } = await supabase.from("settlements").insert(row));
+    }
     setSettlementSaving(false);
     if (error) showNotice(`Payment wasn't recorded: ${error.message}`, "error");
     else showNotice(`${transfer.from} paid ${transfer.to}.`);
