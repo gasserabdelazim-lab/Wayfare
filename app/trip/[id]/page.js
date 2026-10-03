@@ -1790,7 +1790,7 @@ export default function TripPage() {
       </section>
 
       <section className={activeTab === "settle" ? "tab-panel" : "tab-panel is-hidden"}>
-      {expenseOnly && <div className="expense-only-banner"><span>⌂</span><div><strong>Everyday expense group</strong><p>No itinerary needed. Add supermarket runs, rent, dinners, or anything the group shares.</p></div></div>}
+      {expenseOnly && <div className="expense-only-banner"><span><ExpenseIcon name={expenseAppearance(tripDisplayName, "other").icon === "tag" ? "group" : expenseAppearance(tripDisplayName, "other").icon} /></span><div><strong>Everyday expense group</strong><p>No itinerary needed. Add supermarket runs, rent, dinners, or anything the group shares.</p></div></div>}
       <div className="sec-head"><h2>Costs so far</h2></div>
       <div className="cost-card">
         <div className="cost-total">
@@ -1953,7 +1953,7 @@ export default function TripPage() {
         <Icon name="plus" style={{ width: 19, height: 19 }} /><span>Add activity</span>
       </button>}
       <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Main navigation">
-        <button className={`bottom-nav-item ${!expenseOnly && activeTab === "plan" ? "active" : ""}`} onClick={() => expenseOnly ? router.push("/") : switchTab("plan")}><NavIcon name="plans" /><small>Plans</small></button>
+        <button className={`bottom-nav-item ${!expenseOnly && activeTab === "plan" ? "active" : ""}`} onClick={() => (expenseOnly || activeTab === "plan") ? router.push("/") : switchTab("plan")}><NavIcon name="plans" /><small>Plans</small></button>
         <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
         <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => switchTab("updates")}><UpdateBadge count={notifications.unread} /><small>Updates</small></button>
         <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => switchTab("profile")}><NavIcon name="profile" /><small>Profile</small></button>
