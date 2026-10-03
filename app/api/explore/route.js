@@ -123,6 +123,49 @@ async function geocodeCity(name) {
   return null;
 }
 
+// Google category phrases (used only when GOOGLE_PLACES_API_KEY is set).
+const GOOGLE_QUERY = {
+  coffee: "best coffee shops",
+  restaurants: "best restaurants",
+  activities: "top things to do museums and activities",
+  kids: "kid friendly attractions playgrounds",
+  sights: "top sights and landmarks",
+};
+
+async function fromGoogle(category, lat, lon, label, key) {
+  const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": key,
+      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.photos,places.primaryTypeDisplayName,places.websiteUri,places.googleMapsUri",
+    },
+    body: JSON.stringify({
+      textQuery: `${GOOGLE_QUERY[category]} in ${label || "this area"}`,
+      maxResultCount: 20,
+      locationBias: { circle: { center: { latitude: lat, longitude: lon }, radius: 6000 } },
+    }),
+    signal: AbortSignal.timeout(9000),
+  });
+  if (!response.ok) throw new Error(`google ${response.status}`);
+  const payload = await response.json();
+  return (payload.places || []).map((place) => ({
+    id: `g-${place.id}`,
+    name: place.displayName?.text,
+    kind: place.primaryTypeDisplayName?.text || "",
+    address: (place.formattedAddress || "").split(",").slice(0, 2).join(",").trim(),
+    website: place.websiteUri || "",
+    mapsUrl: place.googleMapsUri || "",
+    hours: "",
+    latitude: place.location?.latitude,
+    longitude: place.location?.longitude,
+    rating: place.rating || null,
+    ratingCount: place.userRatingCount || 0,
+    photo: place.photos?.[0]?.name ? `/api/place-photo?name=${encodeURIComponent(place.photos[0].name)}` : "",
+    score: (place.rating || 0) * Math.log10((place.userRatingCount || 0) + 10),
+  })).filter((item) => item.name && Number.isFinite(item.latitude));
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const category = String(searchParams.get("category") || "coffee");
@@ -142,7 +185,15 @@ export async function GET(request) {
 
   const problems = [];
   let found = [];
-  try {
+  const googleKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (googleKey) {
+    try {
+      found = await fromGoogle(category, lat, lon, center?.label || place, googleKey);
+    } catch (error) {
+      problems.push(error.message);
+    }
+  }
+  if (!found.length) try {
     found = await fromNominatim(PHRASES[category], lat, lon);
   } catch (error) {
     problems.push(error.message);
@@ -164,5 +215,5 @@ export async function GET(request) {
   if (!results.length && problems.length) {
     return NextResponse.json({ results: [], error: "Explore is temporarily unavailable.", problems }, { status: 502 });
   }
-  return NextResponse.json({ results, center }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
+  return NextResponse.json({ results, center, source: googleKey && results[0]?.rating ? "google" : "osm" }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
 }
