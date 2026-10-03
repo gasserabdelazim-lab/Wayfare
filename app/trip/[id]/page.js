@@ -1661,7 +1661,6 @@ export default function TripPage() {
               selectedDay={mapDay}
               statusFor={statusOf}
               onActivitySelect={(activityId) => {
-                setPlanView("timeline");
                 setTimeout(() => itemRefs.current[activityId]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
               }}
             />
@@ -1670,7 +1669,7 @@ export default function TripPage() {
       )}
 
       
-      {activities.length === 0 && planView === "timeline" && (
+      {activities.length === 0 && (
         <div className="empty-state">
           <Icon name="sparkle" style={{ width: 22, height: 22, opacity: 0.5 }} />
           <div className="empty-title">No activities yet</div>
@@ -1686,7 +1685,7 @@ export default function TripPage() {
         </div>
       )}
 
-      {planView === "timeline" && grouped.map(([dayLabel, group]) => {
+      {grouped.map(([dayLabel, group]) => {
         const items = group.items;
         const topId = topActivityIdPerDay[dayLabel];
         return (
