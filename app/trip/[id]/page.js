@@ -1225,15 +1225,16 @@ export default function TripPage() {
         }
       }
     }
+    const chosenLabel = item.day_label || `Day ${dayIndex + 1}`;
     const { data, error } = await supabase.from("activities").insert({
       trip_id: tripId,
-      day_label: `Day ${dayIndex + 1}`,
-      day_date: dayDate || tripDayISO(trip?.start_date, dayIndex) || null,
+      day_label: chosenLabel,
+      day_date: item.day_label ? (item.day_date || null) : (dayDate || tripDayISO(trip?.start_date, dayIndex) || null),
       name: item.name,
       location: item.location || null,
       latitude: item.latitude ?? null,
       longitude: item.longitude ?? null,
-      time_text: null,
+      time_text: item.time_text || null,
       cost_pp: 0,
       booking_info: null,
       sort_order: activities.length,
@@ -1496,7 +1497,9 @@ export default function TripPage() {
       : allocateByWeight(baseAmount, travelers.map((traveler) => ({ traveler_id: traveler.id, weight: 1 })));
     return { ...cost, expenseCurrency, rate, baseAmount, allocations, savedSplits };
   });
-  const itemsTotal = roundMoney(activities.reduce((sum, activity) => sum + (activity.cost_pp || 0) * travelers.length, 0));
+  // Plan costs only count once someone has actually paid; until then they are estimates.
+  const itemsTotal = roundMoney(activities.reduce((sum, activity) => sum + (activity.paid_by ? (activity.cost_pp || 0) * travelers.length : 0), 0));
+  const itemsEstimated = roundMoney(activities.reduce((sum, activity) => sum + (activity.paid_by ? 0 : (activity.cost_pp || 0) * travelers.length), 0));
   const extrasTotal = roundMoney(expenseDetails.reduce((sum, expense) => sum + expense.baseAmount, 0));
   const total = roundMoney(itemsTotal + extrasTotal);
   const share = travelers.length ? roundMoney(total / travelers.length) : 0;
@@ -1711,14 +1714,23 @@ export default function TripPage() {
                       {isTop && <span className="top-pick" title="Group favorite"><Icon name="star" style={{ width: 12, height: 12 }} /></span>}
                       {a.name}
                     </span>
-                    <div className="item-top-right">
-                      <span className={`item-badge b-${status}`}>{status[0].toUpperCase() + status.slice(1)}</span>
-                      <button className="icon-btn delete-activity-btn" title="Remove activity" onClick={() => setDeleteTarget(a)}>
-                        <Icon name="trash" style={{ width: 13, height: 13 }} />
-                      </button>
-                    </div>
+                    {status !== "waiting" && <span className={`item-badge b-${status}`}>{status[0].toUpperCase() + status.slice(1)}</span>}
                   </div>
-                  <div className="item-meta activity-editors">
+                  <p className="item-summary">
+                    <span>{editableTime || "Time not set"}</span>
+                    {editableLocation && <span>{editableLocation.split(",")[0]}</span>}
+                    {a.cost_pp > 0 && <span>{money(a.cost_pp, 0)} pp (estimate)</span>}
+                  </p>
+                  <div className="vote-row" role="group" aria-label={`Vote on ${a.name}`}>
+                    {[["up", "I'm in"], ["meh", "Maybe"], ["down", "Pass"]].map(([value, label]) => {
+                      const count = votes.filter((v) => v.value === value).length;
+                      const mine = votes.find((v) => v.traveler_id === currentTraveler?.id)?.value === value;
+                      return <button type="button" key={value} className={`vote-btn v-${value}${mine ? " is-mine" : ""}`} aria-pressed={mine} onClick={() => castVote(a.id, value)}>{label}{count > 0 && <b>{count}</b>}</button>;
+                    })}
+                  </div>
+                  <details className="item-details">
+                    <summary>Edit details</summary>
+                    <div className="item-meta activity-editors">
                     <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={editableLocation} tripName={tripDisplayName} onCommit={(location, place) => {
                       geocodingRef.current.delete(a.id);
                       updateActivity(a.id, { location: location || null, latitude: place.latitude, longitude: place.longitude });
@@ -1732,16 +1744,11 @@ export default function TripPage() {
                       </select>
                     )}
                   </div>
-                  <div className="vote-row" role="group" aria-label={`Vote on ${a.name}`}>
-                    {[["up", "I'm in"], ["meh", "Maybe"], ["down", "Pass"]].map(([value, label]) => {
-                      const count = votes.filter((v) => v.value === value).length;
-                      const mine = votes.find((v) => v.traveler_id === currentTraveler?.id)?.value === value;
-                      return <button type="button" key={value} className={`vote-btn v-${value}${mine ? " is-mine" : ""}`} aria-pressed={mine} onClick={() => castVote(a.id, value)}>{label}{count > 0 && <b>{count}</b>}</button>;
-                    })}
-                  </div>
-                  <div className="item-actions">
-                    <a className="cal-btn map-action" href={mapsUrl(a)} target="_blank" rel="noreferrer"><Icon name="pin" />Open in Maps</a>
-                  </div>
+                    <div className="item-actions">
+                      <a className="cal-btn map-action" href={mapsUrl(a)} target="_blank" rel="noreferrer"><Icon name="pin" />Open in Maps</a>
+                      <button type="button" className="cal-btn remove-activity" onClick={() => setDeleteTarget(a)}><Icon name="trash" style={{ width: 13, height: 13 }} />Remove</button>
+                    </div>
+                  </details>
                 </div>
               );
             })}
@@ -1830,10 +1837,11 @@ export default function TripPage() {
       <div className="sec-head"><h2>Costs so far</h2></div>
       <div className="cost-card">
         <div className="cost-total">
-          <div><div className="num">{money(total)}</div><div className="lab">total, all items + extras</div></div>
+          <div><div className="num">{money(total)}</div><div className="lab">confirmed so far</div></div>
           <div style={{ textAlign: "right" }}><div className="num">{money(share)}</div><div className="lab">per traveler</div></div>
         </div>
-        <div className="cost-sub">{expenseOnly ? `${money(extrasTotal)} in shared expenses` : `${money(itemsTotal)} from activities · ${money(extrasTotal)} in extras`}</div>
+        <div className="cost-sub">{expenseOnly ? `${money(extrasTotal)} in shared expenses` : `${money(itemsTotal)} from paid activities · ${money(extrasTotal)} in extras`}</div>
+        {!expenseOnly && itemsEstimated > 0 && <div className="estimate-note"><b>~{money(itemsEstimated)}</b> more is planned but not paid yet. Those are estimates from the Plan and are not part of what anyone owes until you mark who paid.</div>}
         {categorySpend.length > 1 && (
           <div className="spend-breakdown">
             <div className="field-label">Where it went</div>
@@ -1847,17 +1855,34 @@ export default function TripPage() {
             ))}
           </div>
         )}
-        {activities.filter((a) => a.cost_pp > 0).map((a) => {
+        {activities.filter((a) => a.cost_pp > 0 && a.paid_by).map((a) => {
           const payer = travelers.find((t) => t.id === a.paid_by);
           return (
             <div className="ledger-row" key={a.id}>
               <span className="ledger-name">
-                {a.name} <span className="ledger-sub">— {money(a.cost_pp, 2)} pp{payer ? ` · paid by ${payer.name}` : ""}</span>
+                {a.name} <span className="confirmed-tag">Confirmed</span> <span className="ledger-sub">— {money(a.cost_pp, 2)} pp{payer ? ` · paid by ${payer.name}` : ""}</span>
               </span>
               <span className="ledger-amt">{money(a.cost_pp * travelers.length)}</span>
             </div>
           );
         })}
+        {activities.some((a) => a.cost_pp > 0 && !a.paid_by) && (
+          <div className="estimates-block">
+            <div className="estimates-head"><strong>Planned, not paid yet</strong><span>Estimates from your Plan</span></div>
+            {activities.filter((a) => a.cost_pp > 0 && !a.paid_by).map((a) => (
+              <div className="ledger-row estimate-row" key={a.id}>
+                <span className="ledger-name">
+                  {a.name} <span className="estimate-tag">Estimate</span> <span className="ledger-sub">— about {money(a.cost_pp, 2)} pp</span>
+                </span>
+                <span className="ledger-amt">~{money(a.cost_pp * travelers.length)}</span>
+                <select className="paid-select estimate-paid" aria-label={`Who paid for ${a.name}`} value="" onChange={(e) => e.target.value && updateActivity(a.id, { paid_by: e.target.value })}>
+                  <option value="">Mark paid by…</option>
+                  {travelers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
         {expenseDetails.map((expense) => {
           const participantNames = expense.allocations.map((allocation) => travelers.find((traveler) => traveler.id === allocation.traveler_id)?.name).filter(Boolean);
           return (
@@ -1954,6 +1979,8 @@ export default function TripPage() {
         section={placesSection}
         onSection={setPlacesSection}
         onAddToSchedule={addItemToSchedule}
+        timeOptions={TIME_OPTIONS}
+        dayChoices={dayOptions.map((label, index) => { const dateText = formatTripDayDate(trip?.start_date, index); return { label, date: tripDayISO(trip?.start_date, index), text: dateText ? `${label} · ${dateText}` : label }; })}
         renderMap={(items) => <TripMap activities={items} selectedDay="All days" statusFor={() => "agreed"} onActivitySelect={() => {}} />}
       />}
       {activeTab === "group" && !expenseOnly && <PeopleTab
