@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TOUR_EVENT } from "./GuidedTour";
 
 export default function AccountPanel({ account, displayName, redirectTo }) {
   const [mode, setMode] = useState("signin");
@@ -25,7 +26,7 @@ export default function AccountPanel({ account, displayName, redirectTo }) {
   if (account.user) return (
     <div className="account-card account-signed-in">
       <div><span className="eyebrow">Cloud profile</span><h3>Synced across your devices</h3><p>{account.user.email}</p></div>
-      <button type="button" className="account-secondary" onClick={account.signOut}>Sign out</button>
+      <div className="account-actions"><button type="button" className="account-secondary" onClick={() => window.dispatchEvent(new CustomEvent(TOUR_EVENT))}>Replay tour</button><button type="button" className="account-secondary" onClick={account.signOut}>Sign out</button></div>
       {account.message && <div className={`account-message ${account.message.type}`}>{account.message.text}</div>}
     </div>
   );
