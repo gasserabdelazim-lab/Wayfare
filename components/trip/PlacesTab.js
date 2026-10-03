@@ -62,7 +62,7 @@ function SavedPlaces({ features, tripName, userId, canManage, onAddToSchedule, r
   }
   async function schedule(place) {
     const ok = await onAddToSchedule({ name: place.name, location: place.address || place.name, latitude: place.latitude, longitude: place.longitude });
-    setNotice(ok ? `${place.name} was added to your schedule.` : "Couldn't add that to the schedule.");
+    setNotice(ok ? `${place.name} was added to the plan. Put it to a vote!` : "Couldn't add that to the schedule.");
     setTimeout(() => setNotice(""), 3200);
   }
 
@@ -74,7 +74,7 @@ function SavedPlaces({ features, tripName, userId, canManage, onAddToSchedule, r
         {place.address && <small>{place.address}</small>}
         <div className="chip-row">{place.category && <em>{place.category}</em>}{place.collection && <em className="alt">{place.collection}</em>}</div>
         <div className="card-actions">
-          <button type="button" onClick={() => schedule(place)}>Add to schedule</button>
+          <button type="button" onClick={() => schedule(place)}>Add to plan</button>
           {place.latitude != null && <a href={`https://www.google.com/maps/search/?api=1&query=${place.latitude},${place.longitude}`} target="_blank" rel="noreferrer">Maps</a>}
           {(place.created_by === userId || canManage) && <button type="button" className="danger" onClick={() => features.remove("places", place.id)}>Remove</button>}
         </div>
@@ -101,8 +101,7 @@ function SavedPlaces({ features, tripName, userId, canManage, onAddToSchedule, r
       ) : <div className="card-stack">{places.map(card)}</div>}
       {notice && <div className="mini-toast" role="status">{notice}</div>}
       <ActionBar className="with-plus">
-        <PillTabs label="Places grouping" value={mode} onChange={setMode} items={[{ id: "all", label: "All" }, { id: "collections", label: "Collections" }]} />
-        <IconToggle value={view} onChange={setView} />
+        <span className="bar-label">{places.length} saved</span>
         <PlusButton onClick={openNew} label="Save a place" />
       </ActionBar>
       <Sheet open={open} title="Save a place" onClose={() => setOpen(false)}>
@@ -142,7 +141,7 @@ function Events({ features, tripName, userId, canManage, onAddToSchedule }) {
   }
   async function schedule(ev) {
     const ok = await onAddToSchedule({ name: ev.title, location: ev.venue || null, latitude: null, longitude: null, when: ev.starts_at });
-    setNotice(ok ? `${ev.title} was added to your schedule.` : "Couldn't add that to the schedule.");
+    setNotice(ok ? `${ev.title} was added to the plan. Put it to a vote!` : "Couldn't add that to the schedule.");
     setTimeout(() => setNotice(""), 3200);
   }
 
@@ -234,7 +233,7 @@ function Explore({ features, tripName, onAddToSchedule }) {
   }
   async function schedule(item) {
     const ok = await onAddToSchedule({ name: item.name, location: item.address || item.name, latitude: item.latitude, longitude: item.longitude });
-    setNotice(ok ? `${item.name} was added to your schedule.` : "Couldn't add that to the schedule.");
+    setNotice(ok ? `${item.name} was added to the plan. Put it to a vote!` : "Couldn't add that to the schedule.");
     setTimeout(() => setNotice(""), 3000);
   }
 
@@ -267,7 +266,7 @@ function Explore({ features, tripName, onAddToSchedule }) {
             <small>{[item.kind, item.address].filter(Boolean).join(" · ") || "Nearby"}</small>
             <div className="card-actions">
               <button type="button" disabled={savedNames.has(item.name.toLowerCase())} onClick={() => save(item)}>{savedNames.has(item.name.toLowerCase()) ? "Saved" : "Save"}</button>
-              <button type="button" onClick={() => schedule(item)}>Schedule</button>
+              <button type="button" onClick={() => schedule(item)}>Add to plan</button>
             </div>
           </article>
         ))}
@@ -280,7 +279,7 @@ function Explore({ features, tripName, onAddToSchedule }) {
 export default function PlacesTab({ features, tripName, userId, canManage, section, onSection, onAddToSchedule, renderMap }) {
   return (
     <div className="feature-pane">
-      <PillTabs label="Places sections" value={section} onChange={onSection} items={[{ id: "places", label: "Places" }, { id: "explore", label: "Explore" }]} />
+      <PillTabs label="Places sections" value={section} onChange={onSection} items={[{ id: "explore", label: "Explore" }, { id: "places", label: "Saved" }]} />
       <Setup available={features.available || section === "explore"} />
       {section === "places" && <SavedPlaces features={features} tripName={tripName} userId={userId} canManage={canManage} onAddToSchedule={onAddToSchedule} renderMap={renderMap} />}
       {section === "explore" && <Explore features={features} tripName={tripName} onAddToSchedule={onAddToSchedule} />}
