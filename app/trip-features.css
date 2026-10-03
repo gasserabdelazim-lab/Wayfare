@@ -214,3 +214,5 @@
 .header-bell-button { position: relative; width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: #b9c7d0; cursor: pointer; }
 .feature-pane { padding-top: 12px; }
 .home-action-spacer { height: 90px; }
+.explore-card { display: block; }
+.explore-tile { box-sizing: border-box; width: 100%; }
