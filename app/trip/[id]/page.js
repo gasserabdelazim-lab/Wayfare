@@ -1645,7 +1645,7 @@ export default function TripPage() {
         </details>
       </header>
       <div className="wrap trip-wrap">
-      {activeTab === "plan" && !expenseOnly && planSection === "schedule" && <div className="day-rail" role="group" aria-label="Jump to a day">{dayOptions.map((day, index) => { const dateText = formatTripDayDate(trip.start_date, index); return <button type="button" key={day} onClick={() => { setPlanView("timeline"); setTimeout(() => document.getElementById(`day-${day.replace(/\s+/g, "-")}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }}><strong>{dateText || day}</strong><small>{dateText ? day : ""}</small></button>; })}</div>}
+      {activeTab === "plan" && !expenseOnly && planSection === "schedule" && planView !== "map" && <div className="day-rail" role="group" aria-label="Jump to a day">{dayOptions.map((day, index) => { const dateText = formatTripDayDate(trip.start_date, index); return <button type="button" key={day} onClick={() => { setPlanView("timeline"); setTimeout(() => document.getElementById(`day-${day.replace(/\s+/g, "-")}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }}><strong>{dateText || day}</strong><small>{dateText ? day : ""}</small></button>; })}</div>}
       {(activeTab === "settle" || activeTab === "updates") && <div className="group-context-switch"><span><small>Current group</small><strong>{tripDisplayName}</strong></span></div>}
 
 
