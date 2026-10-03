@@ -249,3 +249,22 @@
 .trip-code-row span { grid-column: 1 / -1; color: #9fb4c4; font-size: 12px; }
 .explore-open { display: block; color: inherit; text-decoration: none; }
 .explore-open:hover strong { text-decoration: underline; }
+
+/* ---------- v3: four-tab simplification ---------- */
+.vote-row { display: flex; gap: 8px; margin-top: 12px; }
+.vote-btn { flex: 1; min-height: 40px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--ink); font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.vote-btn b { font-size: 12px; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.vote-btn.v-up.is-mine { background: linear-gradient(135deg, var(--teal), var(--purple)); color: #06141f; border-color: transparent; }
+.vote-btn.v-meh.is-mine { background: var(--gold); color: #06141f; border-color: transparent; }
+.vote-btn.v-down.is-mine { background: var(--coral); color: #06141f; border-color: transparent; }
+.people-card { padding: 18px; border-radius: 22px; background: var(--paper-2); border: 1px solid var(--line); }
+.people-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.people-card h3 { margin: 2px 0 0; font: 700 22px var(--font-display); }
+.people-invite { min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--teal), var(--purple)); color: #06141f; font-weight: 800; cursor: pointer; }
+.people-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.people-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.people-list li:first-child { border-top: 0; }
+.people-list i { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-2); font-style: normal; font-weight: 800; font-size: 13px; }
+.people-list span { flex: 1; font-weight: 600; }
+.people-list em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--gold); text-transform: uppercase; }
+.home-bar .join-code-button { flex: 1; }

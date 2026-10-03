@@ -153,7 +153,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [tripSearch, setTripSearch] = useState("");
-  const [tripFilter, setTripFilter] = useState("active");
+  const [tripFilter, setTripFilter] = useState("all");
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinBusy, setJoinBusy] = useState(false);
@@ -718,10 +718,6 @@ export default function Home() {
       <header className="app-header">
         <div><div className="brand-mark dark">PALVOYA</div><p>Plan together. Settle simply.</p></div>
         <div className="app-header-actions">
-          <button type="button" className="header-bell-button" aria-label={notifications.unread ? `${notifications.unread} unread updates` : "Updates"} onClick={() => navigateView("updates")}>
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 8h18c0-1-3-1-3-8Z" /><path d="M10 20h4" /></svg>
-            {notifications.unread > 0 && <b className="topbar-dot" />}
-          </button>
           <button type="button" className="header-profile-button" aria-label="Open your profile" onClick={() => navigateView("profile")}><AvatarPreview name={yourName} avatar={profileAvatar} /></button>
         </div>
       </header>
@@ -840,14 +836,6 @@ export default function Home() {
 
       {activeView === "plans" && (
         <ActionBar className="with-plus home-bar">
-          <label className="select-pill">
-            <select value={tripFilter} onChange={(event) => setTripFilter(event.target.value)} aria-label="Which trips to show">
-              <option value="active">Active trips</option>
-              <option value="past">Past trips</option>
-              <option value="all">All trips</option>
-            </select>
-            <svg className="select-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 9 5-4 5 4M7 15l5 4 5-4" /></svg>
-          </label>
           <button type="button" className="join-code-button" onClick={() => { setJoinError(""); setJoinCode(""); setJoinOpen(true); }}>Join with code</button>
           <PlusButton label="New trip" onClick={handleHeaderAdd} />
         </ActionBar>
