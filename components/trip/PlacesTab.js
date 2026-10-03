@@ -193,44 +193,32 @@ function Events({ features, tripName, userId, canManage, onAddToSchedule }) {
 function Explore({ features, tripName, onAddToSchedule }) {
   const term = destinationInfo(tripName).term || tripName;
   const [category, setCategory] = useState("coffee");
-  const [center, setCenter] = useState(null);
+  const [centerLabel, setCenterLabel] = useState("");
   const [items, setItems] = useState([]);
   const [state, setState] = useState("loading");
   const [notice, setNotice] = useState("");
   const cache = useRef({});
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const response = await fetch(`/api/places?q=${encodeURIComponent(term)}`);
-        const payload = await response.json();
-        const first = (payload.results || [])[0];
-        if (!cancelled) { if (first) setCenter({ lat: first.latitude, lon: first.longitude, label: first.label }); else setState("nocenter"); }
-      } catch { if (!cancelled) setState("error"); }
-    })();
-    return () => { cancelled = true; };
-  }, [term]);
-
-  useEffect(() => {
-    if (!center) return undefined;
-    const key = `${center.lat},${center.lon},${category}`;
-    if (cache.current[key]) { setItems(cache.current[key]); setState("ready"); return undefined; }
+    const key = `${term}|${category}`;
+    if (cache.current[key]) { setItems(cache.current[key].results); setCenterLabel(cache.current[key].label); setState("ready"); return undefined; }
     let cancelled = false;
     setState("loading");
     (async () => {
       try {
-        const response = await fetch(`/api/explore?lat=${center.lat}&lon=${center.lon}&category=${category}`);
+        const response = await fetch(`/api/explore?place=${encodeURIComponent(term)}&category=${category}`);
         const payload = await response.json();
         if (cancelled) return;
+        if (response.status === 404) { setState("nocenter"); return; }
         if (!response.ok) { setState("error"); return; }
-        cache.current[key] = payload.results || [];
-        setItems(cache.current[key]);
+        cache.current[key] = { results: payload.results || [], label: payload.center?.label || "" };
+        setItems(cache.current[key].results);
+        setCenterLabel(cache.current[key].label);
         setState("ready");
       } catch { if (!cancelled) setState("error"); }
     })();
     return () => { cancelled = true; };
-  }, [center, category]);
+  }, [term, category]);
 
   const savedNames = new Set(features.places.map((p) => p.name.toLowerCase()));
   async function save(item) {
@@ -248,7 +236,7 @@ function Explore({ features, tripName, onAddToSchedule }) {
     <>
       <div className="explore-banner">
         <small>NEAR</small>
-        <strong>{center?.label || term}</strong>
+        <strong>{centerLabel || term}</strong>
         <span>Trip destination</span>
       </div>
       <div className="chip-scroll" role="tablist" aria-label="Explore categories">
