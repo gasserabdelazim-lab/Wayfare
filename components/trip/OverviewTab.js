@@ -61,13 +61,6 @@ export default function OverviewTab({ tripName, dateLabel, photo, travelers, fea
       <Setup available={features.available} />
 
       <section className="overview-section">
-        <div className="overview-section-head"><h3>Your flights</h3><button type="button" onClick={() => onTab("plan", "flights")}>{myFlights.length ? "See all" : "+ Add flight"}</button></div>
-        {myFlights.length === 0 ? <p className="empty-note small">No flights yet. Add yours so the group can see who lands when.</p> : myFlights.slice(0, 2).map((f) => (
-          <article className="mini-card" key={f.id}><strong>{[f.from_place, f.to_place].filter(Boolean).join(" → ") || "Flight"}</strong><small>{[f.airline, f.flight_number, formatDateTime(f.departs_at)].filter(Boolean).join(" · ")}</small></article>
-        ))}
-      </section>
-
-      <section className="overview-section">
         <div className="overview-section-head"><h3>Up next</h3><button type="button" onClick={() => onTab("plan", "schedule")}>{upcoming.length ? "Full schedule" : "+ Plan something"}</button></div>
         {upcoming.length === 0 ? <p className="empty-note small">Nothing planned yet. Add events and bookings to build the itinerary.</p> : upcoming.map((a) => (
           <article className="mini-card" key={a.id}><strong>{a.name}</strong><small>{[a.day_label, a.day_date && formatDay(a.day_date), a.time_text && a.time_text !== "Add time" ? a.time_text : ""].filter(Boolean).join(" · ")}</small></article>
@@ -75,7 +68,10 @@ export default function OverviewTab({ tripName, dateLabel, photo, travelers, fea
       </section>
 
       <section className="overview-section">
-        <div className="overview-section-head"><h3>Where you're staying</h3><button type="button" onClick={() => onTab("plan", "lodging")}>{nextStay ? "See all" : "+ Add lodging"}</button></div>
+        <div className="overview-section-head"><h3>Travel</h3><button type="button" onClick={() => onTab("plan", "flights")}>{myFlights.length || nextStay ? "Manage" : "+ Add"}</button></div>
+        {myFlights.length === 0 ? <p className="empty-note small">No flights yet. Add yours so the group can see who lands when.</p> : myFlights.slice(0, 2).map((f) => (
+          <article className="mini-card" key={f.id}><strong>{[f.from_place, f.to_place].filter(Boolean).join(" → ") || "Flight"}</strong><small>{[f.airline, f.flight_number, formatDateTime(f.departs_at)].filter(Boolean).join(" · ")}</small></article>
+        ))}
         {!nextStay ? <p className="empty-note small">No lodging yet. Add where you'll be sleeping.</p> : <article className="mini-card"><strong>{nextStay.name}</strong><small>{[nextStay.check_in && formatDay(nextStay.check_in), nextStay.check_out && formatDay(nextStay.check_out)].filter(Boolean).join(" → ")}</small></article>}
       </section>
 

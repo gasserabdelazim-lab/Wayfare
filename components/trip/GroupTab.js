@@ -137,11 +137,12 @@ function Checklists({ features }) {
   );
 }
 
-export default function GroupTab({ features, travelers, myTraveler, section, onSection, pollsSlot }) {
+export default function GroupTab({ features, travelers, myTraveler, section, onSection, pollsSlot, wallSlot }) {
   return (
     <div className="feature-pane">
-      <PillTabs label="Group sections" value={section} onChange={onSection} items={[{ id: "tasks", label: "Tasks" }, { id: "polls", label: "Polls" }, { id: "checklists", label: "Checklists" }]} />
-      <Setup available={features.available || section === "polls"} />
+      <PillTabs label="Group sections" value={section} onChange={onSection} items={[{ id: "wall", label: "Wall" }, { id: "tasks", label: "Tasks" }, { id: "polls", label: "Polls" }, { id: "checklists", label: "Lists" }]} />
+      {section !== "wall" && <Setup available={features.available || section === "polls"} />}
+      {section === "wall" && wallSlot}
       {section === "tasks" && <Tasks features={features} travelers={travelers} myTraveler={myTraveler} />}
       {section === "polls" && <div className="polls-slot">{pollsSlot}</div>}
       {section === "checklists" && <Checklists features={features} />}

@@ -272,10 +272,9 @@ function Explore({ features, tripName, onAddToSchedule }) {
 export default function PlacesTab({ features, tripName, userId, canManage, section, onSection, onAddToSchedule, renderMap }) {
   return (
     <div className="feature-pane">
-      <PillTabs label="Places sections" value={section} onChange={onSection} items={[{ id: "places", label: "Places" }, { id: "events", label: "Events" }, { id: "explore", label: "Explore" }]} />
+      <PillTabs label="Places sections" value={section} onChange={onSection} items={[{ id: "places", label: "Places" }, { id: "explore", label: "Explore" }]} />
       <Setup available={features.available || section === "explore"} />
       {section === "places" && <SavedPlaces features={features} tripName={tripName} userId={userId} canManage={canManage} onAddToSchedule={onAddToSchedule} renderMap={renderMap} />}
-      {section === "events" && <Events features={features} tripName={tripName} userId={userId} canManage={canManage} onAddToSchedule={onAddToSchedule} />}
       {section === "explore" && <Explore features={features} tripName={tripName} onAddToSchedule={onAddToSchedule} />}
     </div>
   );
