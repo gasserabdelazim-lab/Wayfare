@@ -38,6 +38,23 @@ function markerIcon(index, status) {
   });
 }
 
+// Rough door-to-door estimate between two stops: walking for short hops, driving otherwise.
+function legBetween(a, b) {
+  const rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(Number(b.latitude) - Number(a.latitude));
+  const dLon = rad(Number(b.longitude) - Number(a.longitude));
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(Number(a.latitude))) * Math.cos(rad(Number(b.latitude))) * Math.sin(dLon / 2) ** 2;
+  const km = 2 * 6371 * Math.asin(Math.sqrt(h)) * 1.3;
+  const walking = km <= 1.6;
+  const minutes = Math.max(1, Math.round((km / (walking ? 4.8 : 28)) * 60));
+  return { km, minutes, mode: walking ? "walk" : "drive" };
+}
+
+function formatMinutes(minutes) {
+  if (minutes < 60) return `${minutes} min`;
+  return `${Math.floor(minutes / 60)} h ${minutes % 60 ? `${minutes % 60} min` : ""}`.trim();
+}
+
 function routeUrl(stops) {
   const location = (activity) => `${Number(activity.latitude)},${Number(activity.longitude)}`;
   if (!stops.length) return "";
@@ -60,6 +77,13 @@ export default function TripMap({ activities, selectedDay, statusFor, onActivity
     .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)), [activities, selectedDay]);
   const points = useMemo(() => stops.map((activity) => [Number(activity.latitude), Number(activity.longitude)]), [stops]);
   const missingCount = activities.filter((activity) => (selectedDay === "All days" || (activity.day_label || "Day 1") === selectedDay) && activity.location && !hasCoordinates(activity)).length;
+
+  const legs = stops.map((stop, index) => {
+    const next = stops[index + 1];
+    if (!next || (stop.day_label || "Day 1") !== (next.day_label || "Day 1")) return null;
+    return legBetween(stop, next);
+  });
+  const totalMinutes = legs.reduce((sum, leg) => sum + (leg ? leg.minutes : 0), 0);
 
   if (!stops.length) {
     return (
@@ -101,15 +125,21 @@ export default function TripMap({ activities, selectedDay, statusFor, onActivity
 
       <div className="map-route-panel">
         <div className="map-route-heading">
-          <div><span className="eyebrow">Visual route</span><strong>{stops.length} mapped stop{stops.length === 1 ? "" : "s"}</strong></div>
+          <div><span className="eyebrow">Visual route</span><strong>{stops.length} stop{stops.length === 1 ? "" : "s"}{totalMinutes > 0 ? ` · about ${formatMinutes(totalMinutes)} of travel` : ""}</strong></div>
           <a href={routeUrl(stops)} target="_blank" rel="noreferrer">Open route ↗</a>
         </div>
         <div className="map-stop-list">
           {stops.map((activity, index) => (
-            <button type="button" key={activity.id} onClick={() => onActivitySelect(activity.id)}>
-              <span className={`map-stop-number marker-${statusFor(activity.id)}`}>{index + 1}</span>
-              <span><strong>{activity.name}</strong><small>{activity.time_text || "Flexible time"} · {activity.location}</small></span>
-            </button>
+            <div className="map-stop-block" key={activity.id}>
+              <button type="button" onClick={() => onActivitySelect(activity.id)}>
+                <span className={`map-stop-number marker-${statusFor(activity.id)}`}>{index + 1}</span>
+                <span><strong>{activity.name}</strong><small>{activity.time_text || "Flexible time"} · {activity.location}</small></span>
+              </button>
+              {legs[index] && <div className="map-leg" aria-label={`${formatMinutes(legs[index].minutes)} ${legs[index].mode} to the next stop`}>
+                <i aria-hidden="true" />
+                <span>{legs[index].mode === "walk" ? "Walk" : "Drive"} · about {formatMinutes(legs[index].minutes)} · {legs[index].km.toFixed(1)} km</span>
+              </div>}
+            </div>
           ))}
         </div>
         {missingCount > 0 && <p className="map-sync-note">Finding coordinates for {missingCount} saved location{missingCount === 1 ? "" : "s"}…</p>}
