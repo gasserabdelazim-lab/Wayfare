@@ -12,6 +12,14 @@ import ExpenseIcon from "../../../components/ExpenseIcon";
 import { inferExpense, expenseAppearance } from "../../../lib/expenseAppearance.mjs";
 import AccountPanel from "../../../components/AccountPanel";
 import GuidedTour from "../../../components/GuidedTour";
+import { useTripFeatures } from "../../../lib/useTripFeatures";
+import OverviewTab from "../../../components/trip/OverviewTab";
+import FlightsTab from "../../../components/trip/FlightsTab";
+import LodgingTab from "../../../components/trip/LodgingTab";
+import PlacesTab from "../../../components/trip/PlacesTab";
+import GroupTab from "../../../components/trip/GroupTab";
+import WallTab from "../../../components/trip/WallTab";
+import { ActionBar, IconToggle, PillTabs, PlusButton } from "../../../components/trip/ui";
 import { destinationInfo, findDestinationPhotos } from "../../../lib/destinations";
 import { useWayfareAccount } from "../../../lib/useWayfareAccount";
 
@@ -479,22 +487,28 @@ function downloadIcs(activity) {
 }
 
 
+const TRIP_TABS = ["overview", "plan", "places", "group", "settle", "wall", "updates", "profile"];
 const TRIP_NAV = ".trip-bottom-nav .bottom-nav-item";
 const TRIP_TOUR = [
-  { target: ".compact-edit-trigger summary", title: "Trip details", body: "Rename the trip, set dates, currency and travellers from this small pencil, top right." },
-  { target: ".trip-day-planner", title: "Pick a day", body: "Choose a day to drop an activity into. Each card shows the date and how many ideas are in." },
-  { target: ".plan-view-toggle", title: "Timeline, map or posts", body: "Flip between the day-by-day timeline, the map, and group posts where everyone votes." },
-  { target: ".fab", title: "Add an activity", body: "Tap here any time to add a place or idea. The group can vote on it right away." },
-  { target: `${TRIP_NAV}:nth-child(2)`, enter: `${TRIP_NAV}:nth-child(2)`, title: "Settle up", body: "Type what you paid and the category and icon are detected for you. Palvoya works out who owes whom." },
-  { target: `${TRIP_NAV}:nth-child(3)`, enter: `${TRIP_NAV}:nth-child(3)`, title: "Trip updates", body: "Votes, expenses and edits from the group show up here as they happen." },
-  { target: `${TRIP_NAV}:nth-child(4)`, enter: `${TRIP_NAV}:nth-child(4)`, title: "Your profile", body: "Your details follow you across every plan. Replay this tour from here whenever you like." },
-  { enter: `${TRIP_NAV}:nth-child(1)`, title: "Say hi to the group", body: "Invite your crew and start planning. Tap Plans twice to head back home." },
+  { target: ".topbar-menu summary", title: "Trip menu", body: "Rename the trip, set dates and currency, or invite friends from the three dots, top right." },
+  { target: `${TRIP_NAV}[data-nav="overview"]`, enter: `${TRIP_NAV}[data-nav="overview"]:not(.active)`, title: "Overview is home base", body: "Who's in, what's next, and anything still waiting on your answer. Tap it again to go back to all your trips." },
+  { target: ".rsvp-bar", title: "RSVP and invite your crew", body: "Answer the RSVP, then tap the guest count to see who's coming and share your invite link." },
+  { target: `${TRIP_NAV}[data-nav="plan"]`, enter: `${TRIP_NAV}[data-nav="plan"]`, title: "Itinerary holds the days", body: "Your plan, day by day. Tap a date on the rail to jump straight to that day." },
+  { target: ".action-bar", title: "Add to any day", body: "Tap + to drop in an activity. Flip the list to a map any time." },
+  { target: ".pill-tabs", title: "Schedule, flights and lodging", body: "Bring your flights together so everyone sees who lands when, and keep lodging in one place." },
+  { target: `${TRIP_NAV}[data-nav="places"]`, enter: `${TRIP_NAV}[data-nav="places"]`, title: "Places, events and Explore", body: "Save places and group them in collections, keep events you find, and browse ideas nearby." },
+  { target: `${TRIP_NAV}[data-nav="group"]`, enter: `${TRIP_NAV}[data-nav="group"]`, title: "Group is where you decide", body: "Tasks, polls and checklists, so nothing important gets lost in a chat." },
+  { target: ".action-bar", title: "Start one from the bottom", body: "The + makes a new task or checklist, whichever section you're on." },
+  { target: `${TRIP_NAV}[data-nav="settle"]`, enter: `${TRIP_NAV}[data-nav="settle"]`, title: "Settle up keeps it fair", body: "Type what you paid and the category and icon are picked for you. Palvoya works out who owes whom." },
+  { target: `${TRIP_NAV}[data-nav="wall"]`, enter: `${TRIP_NAV}[data-nav="wall"]`, title: "Trip Wall is where the group talks", body: "Updates, reactions and what you missed. Type @ to mention someone." },
+  { target: ".action-bar", title: "Say hi to the group", body: "Tap Post something… to share an update with everyone on the trip." },
+  { enter: `${TRIP_NAV}[data-nav="overview"]`, title: "You're all set", body: "Invite your crew and start planning. Replay this tour from your profile any time." },
 ];
 const GROUP_TOUR = [
-  { target: ".compact-edit-trigger summary", title: "Group details", body: "Rename the group, change currency or add travellers from the pencil, top right." },
-  { target: `${TRIP_NAV}:nth-child(3)`, enter: `${TRIP_NAV}:nth-child(3)`, title: "Group updates", body: "Every expense and settlement shows up here so nobody misses a thing." },
-  { target: `${TRIP_NAV}:nth-child(4)`, enter: `${TRIP_NAV}:nth-child(4)`, title: "Your profile", body: "Your details follow you across every group. Replay this tour from here whenever you like." },
-  { enter: `${TRIP_NAV}:nth-child(2)`, title: "Add your first expense", body: "Type what you paid and Palvoya detects the category and icon for you." },
+  { target: ".topbar-menu summary", title: "Group menu", body: "Rename the group, change currency or add people from the three dots, top right." },
+  { target: `${TRIP_NAV}[data-nav="settle"]`, enter: `${TRIP_NAV}[data-nav="settle"]`, title: "Add an expense", body: "Type what you paid and Palvoya detects the category and icon. It works out who owes whom." },
+  { target: `${TRIP_NAV}[data-nav="wall"]`, enter: `${TRIP_NAV}[data-nav="wall"]`, title: "Group wall", body: "Chat with the group and see what you missed." },
+  { enter: `${TRIP_NAV}[data-nav="settle"]`, title: "You're all set", body: "Add your first expense and invite the group. Replay this tour from your profile any time." },
 ];
 
 export default function TripPage() {
@@ -534,10 +548,14 @@ export default function TripPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const requested = searchParams.get("view");
-    return ["plan", "settle", "updates", "profile"].includes(requested) ? requested : "plan";
+    return TRIP_TABS.includes(requested) ? requested : "overview";
   });
+  const [planSection, setPlanSection] = useState("schedule");
+  const [placesSection, setPlacesSection] = useState("places");
+  const [groupSection, setGroupSection] = useState("tasks");
   const [currency, setCurrency] = useState("EUR");
   const notifications = useUpdateNotifications(account.user?.id, activeTab === "updates", tripId);
+  const features = useTripFeatures(tripId, account.user?.id);
   const [tripDateDraft, setTripDateDraft] = useState({ start: "", end: "" });
   const [profileDraft, setProfileDraft] = useState({ name: "", home: "", bio: "", currency: "EUR" });
   const [justAddedId, setJustAddedId] = useState(null);
@@ -567,9 +585,9 @@ export default function TripPage() {
   useEffect(() => {
     const requested = searchParams.get("view");
     const expenseOnlyGroup = isExpenseGroupName(trip?.name);
-    const fallback = expenseOnlyGroup ? "settle" : "plan";
-    let next = ["plan", "settle", "updates", "profile"].includes(requested) ? requested : fallback;
-    if (expenseOnlyGroup && next === "plan") next = "settle";
+    const fallback = expenseOnlyGroup ? "settle" : "overview";
+    let next = TRIP_TABS.includes(requested) ? requested : fallback;
+    if (expenseOnlyGroup && ["overview", "plan", "places", "group"].includes(next)) next = "settle";
     if (next !== activeTab) setActiveTab(next);
   }, [searchParams, trip?.name]);
 
@@ -809,8 +827,13 @@ export default function TripPage() {
     return (account.user && travelers.find((t) => t.user_id === account.user.id)) || travelers.find((t) => t.name.toLowerCase() === (me || "").toLowerCase());
   }
 
-  function switchTab(nextTab) {
+  function switchTab(nextTab, sub) {
     setActiveTab(nextTab);
+    if (sub) {
+      if (nextTab === "plan") setPlanSection(sub);
+      if (nextTab === "places") setPlacesSection(sub);
+      if (nextTab === "group") setGroupSection(sub);
+    }
     router.replace(`/trip/${tripId}?view=${nextTab}`, { scroll: false });
     window.scrollTo({ top: 0, behavior: "instant" });
   }
@@ -1176,6 +1199,39 @@ export default function TripPage() {
     await load();
   }
 
+  async function addItemToSchedule(item) {
+    let dayIndex = 0;
+    let dayDate = null;
+    if (item.when) {
+      const when = new Date(item.when);
+      if (!Number.isNaN(when.getTime())) {
+        const pad = (n) => String(n).padStart(2, "0");
+        dayDate = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`;
+        if (trip?.start_date) {
+          const diff = Math.round((new Date(`${dayDate}T12:00:00`) - new Date(`${trip.start_date}T12:00:00`)) / 86400000);
+          if (diff >= 0 && diff < tripDays) dayIndex = diff;
+        }
+      }
+    }
+    const { data, error } = await supabase.from("activities").insert({
+      trip_id: tripId,
+      day_label: `Day ${dayIndex + 1}`,
+      day_date: dayDate || tripDayISO(trip?.start_date, dayIndex) || null,
+      name: item.name,
+      location: item.location || null,
+      latitude: item.latitude ?? null,
+      longitude: item.longitude ?? null,
+      time_text: null,
+      cost_pp: 0,
+      booking_info: null,
+      sort_order: activities.length,
+    }).select().single();
+    if (error) return false;
+    if (data) setActivities((current) => [...current.filter((activity) => activity.id !== data.id), data]);
+    await load();
+    return true;
+  }
+
   function calculateFormSplit(form = costForm) {
     const amount = roundMoney(parseFloat(String(form.amt || "").replace(/[^0-9.]/g, "")));
     const participants = travelers.filter((traveler) => form.participantIds.includes(traveler.id));
@@ -1522,29 +1578,33 @@ export default function TripPage() {
           <small>{refreshing ? "Refreshing…" : pullDistance > 60 ? "Release to refresh" : "Pull to refresh"}</small>
         </div>
       )}
-      {activeTab === "plan" ? <div className="trip-hero" style={{ backgroundImage: `url(${destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]})` }}>
-        <div className="hero-nav"><button type="button" className="all-plans-back hero-back" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}><span aria-hidden="true">←</span> {expenseOnly ? "All groups" : "All plans"}</button><button className="share-btn" onClick={openSharePanel}><Icon name="arrow" style={{ width: 14, height: 14 }} />{canManageMembers ? "Invite friends" : "Members"}</button></div>
-        <div className="hero-content">
-          <div className="eyebrow hero-eyebrow">{expenseOnly ? "Shared expense group" : "Trip plan"}</div>
-          <h1>{tripDisplayName}</h1>
-          <div className="hero-meta">
-            <span className="traveler-stack">{travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} avatar={t.avatar} size={28} />)}</span>
-            <span>{travelers.length} {expenseOnly ? `member${travelers.length === 1 ? "" : "s"}` : `traveler${travelers.length === 1 ? "" : "s"}`}</span>{!expenseOnly && <><span>•</span><span>{formatTripRange(trip.start_date, trip.end_date)}</span></>}<span>•</span><span>{expenseOnly ? `${extraCosts.length} expense${extraCosts.length === 1 ? "" : "s"}` : `${activities.length} ideas`}</span><span>•</span><span>{expenseOnly ? `${money(total)} shared` : `${money(share)} each so far`}</span>
+      <header className="trip-topbar">
+        <button type="button" className="topbar-avatar" onClick={() => switchTab("profile")} aria-label="Open your profile"><Avatar name={profileDraft.name || me} avatar={currentTraveler?.avatar} size={44} /></button>
+        <h1 className="topbar-title">{tripDisplayName}</h1>
+        <button type="button" className="topbar-icon" onClick={() => switchTab("updates")} aria-label={notifications.unread ? `${notifications.unread} unread updates` : "Updates"}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 8h18c0-1-3-1-3-8Z" /><path d="M10 20h4" /></svg>
+          {notifications.unread > 0 && <b className="topbar-dot" />}
+        </button>
+        <details className="compact-edit-trigger topbar-menu">
+          <summary aria-label={expenseOnly ? "Group menu" : "Trip menu"} title={expenseOnly ? "Group menu" : "Trip menu"}><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" /></svg></summary>
+          <div className="topbar-menu-links">
+            <button type="button" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}>{expenseOnly ? "All groups" : "All trips"}</button>
+            <button type="button" onClick={openSharePanel}>{canManageMembers ? "Invite friends" : "Members"}</button>
           </div>
-          {!expenseOnly && destinationPhotos.length > 1 && <div className="destination-photo-strip" aria-label={`${tripDisplayName} photos`}>{destinationPhotos.slice(0, 6).map((photo, index) => <button key={photo} className={heroPhotoIndex === index ? "active" : ""} aria-label={`Show destination photo ${index + 1}`} style={{ backgroundImage: `url(${photo})` }} onClick={() => setHeroPhotoIndex(index)} />)}</div>}
-        </div>
-      </div> : <header className="personal-app-header">
-        <button className="personal-back" onClick={() => router.push(activeTab === "profile" ? "/" : `/?view=${activeTab}`)}><span aria-hidden="true">←</span>{activeTab === "profile" ? "All plans" : activeTab === "settle" ? "All groups" : "All updates"}</button>
-      </header>}
-
-      <div className="wrap trip-wrap">
-      <header className="trip-view-header">
-        <div className="eyebrow">{activeTab === "plan" ? `${tripDisplayName} itinerary` : activeTab === "settle" ? "Shared expenses" : activeTab === "updates" ? "Latest activity" : "Your personal space"}</div>
-        <h2>{activeTab === "plan" ? "Activities & ideas" : activeTab === "settle" ? "Settle up" : activeTab === "updates" ? "Updates" : "My profile"}</h2>
-        {activeTab === "profile" && <p className="personal-view-intro">Your details, your style. One profile for every plan.</p>}
-
-        {activeTab === "plan" && !expenseOnly && <details className="compact-edit-trigger">
-          <summary aria-label="Edit trip details" title="Edit trip details"><Icon name="edit" style={{ width: 15, height: 15 }} /></summary>
+          {expenseOnly ? (
+          <div className="trip-details-body">
+            <div className="compact-edit-heading"><span className="eyebrow">Group administration</span><strong>Group details</strong></div>
+            <label className="field-label">Group name</label>
+            <div className="trip-name-edit">
+              <input aria-label="Group name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Roommates" />
+              <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
+            </div>
+            <label className="field-label">Group currency</label>
+            <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
+            <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
+            <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage members" : "View members"}</button>
+          </div>
+        ) : (
           <div className="trip-details-body">
             <div className="compact-edit-heading"><span className="eyebrow">Trip administration</span><strong>Trip details</strong></div>
             <label className="field-label">Trip name</label>
@@ -1565,69 +1625,23 @@ export default function TripPage() {
             <div className="profile-members"><div className="field-label">Travelers</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
             <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage travelers" : "View travelers"}</button>
           </div>
-        </details>}
-
-        {activeTab === "settle" && expenseOnly && <details className="compact-edit-trigger">
-          <summary aria-label="Edit group details" title="Edit group details"><Icon name="edit" style={{ width: 15, height: 15 }} /></summary>
-          <div className="trip-details-body">
-            <div className="compact-edit-heading"><span className="eyebrow">Group administration</span><strong>Group details</strong></div>
-            <label className="field-label">Group name</label>
-            <div className="trip-name-edit">
-              <input aria-label="Group name" type="text" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="e.g. Roommates" />
-              <button type="button" onClick={updateTripName} disabled={nameSaving || !nameDraft.trim()}>{nameSaving ? "Saving…" : "Save name"}</button>
-            </div>
-            <label className="field-label">Group currency</label>
-            <select aria-label="Group currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
-            <div className="profile-members"><div className="field-label">Members</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
-            <button type="button" className="manage-members-button" onClick={openSharePanel}>{canManageMembers ? "Invite or manage members" : "View members"}</button>
-          </div>
-        </details>}
+        )}
+        </details>
       </header>
+      <div className="wrap trip-wrap">
+      {activeTab === "plan" && !expenseOnly && <PillTabs label="Itinerary sections" value={planSection} onChange={(id) => setPlanSection(id)} items={[{ id: "schedule", label: "Schedule" }, { id: "flights", label: "Flights" }, { id: "lodging", label: "Lodging" }]} />}
+      {activeTab === "plan" && !expenseOnly && planSection === "schedule" && <div className="day-rail" role="group" aria-label="Jump to a day">{dayOptions.map((day, index) => { const dateText = formatTripDayDate(trip.start_date, index); return <button type="button" key={day} onClick={() => { setPlanView("timeline"); setTimeout(() => document.getElementById(`day-${day.replace(/\s+/g, "-")}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }}><strong>{dateText || day}</strong><small>{dateText ? day : ""}</small></button>; })}</div>}
       {(activeTab === "settle" || activeTab === "updates") && <div className="group-context-switch"><span><small>Current group</small><strong>{tripDisplayName}</strong></span></div>}
-
-      {activeTab === "plan" && <div className="trip-summary">
+      {activeTab === "plan" && planSection === "schedule" && <div className="trip-summary">
         <div><strong>{counts.agreed}</strong><span>Approved</span></div>
         <div><strong>{counts.contested}</strong><span>Needs a vote</span></div>
         <div><strong>{counts.waiting}</strong><span>New ideas</span></div>
         <div className="summary-budget"><strong>{money(share)}</strong><span>Estimated per person</span></div>
       </div>}
 
-      {activeTab === "plan" && !expenseOnly && <div className="trip-day-planner"><div className="trip-day-planner-head"><div><span className="eyebrow">{tripDays}-day trip</span><strong>Choose a day to add an activity</strong></div><small>{trip.start_date ? formatTripRange(trip.start_date, trip.end_date) : "Add dates from Trip details whenever you are ready"}</small></div><div className="trip-day-buttons">{dayOptions.map((day, index) => { const count = activities.filter((activity) => (activity.day_label || "Day 1") === day).length; const dateText = formatTripDayDate(trip.start_date, index); return <button key={day} onClick={() => { setNewActivity((current) => ({ ...current, day_label: day, day_date: tripDayISO(trip.start_date, index) || current.day_date })); setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}><strong>{day}</strong><small>{dateText ? `${dateText} · ` : ""}{count} activit{count === 1 ? "y" : "ies"}</small></button>; })}</div></div>}
-
-      <section className={activeTab === "plan" ? "tab-panel" : "tab-panel is-hidden"}>
-      <div className="pass legacy-pass">
-        <div className="pass-top">
-          <div>
-            <div className="eyebrow">Boarding · Group trip</div>
-            <h1>{tripDisplayName}</h1>
-            <div className="pass-dates">
-              <span className="traveler-stack">
-                {travelers.slice(0, 5).map((t) => <Avatar key={t.id} name={t.name} avatar={t.avatar} size={22} />)}
-              </span>
-              {travelers.length} traveler{travelers.length === 1 ? "" : "s"} · you're {me}
-            </div>
-          </div>
-          <button className="share-btn" onClick={openSharePanel}>
-            <Icon name="pin" style={{ width: 14, height: 14 }} />Share
-          </button>
-        </div>
-        <div className="stub">
-          <div><div className="lab">Agreed</div><div className="val val-agreed">{counts.agreed}</div></div>
-          <div><div className="lab">Contested</div><div className="val val-contested">{counts.contested}</div></div>
-          <div><div className="lab">Waiting</div><div className="val val-waiting">{counts.waiting}</div></div>
-        </div>
-      </div>
-
+      <section className={activeTab === "plan" && planSection === "schedule" && !expenseOnly ? "tab-panel" : "tab-panel is-hidden"}>
       {!expenseOnly && (
         <section className="map-workspace" aria-label="Map and timeline planner">
-          <div className="map-workspace-head">
-            <div><span className="eyebrow">Your trip, together</span><h3>The group plan</h3><p>Collect ideas, have your say, and see it all on the map.</p></div>
-            <div className="plan-view-toggle" role="group" aria-label="Itinerary view">
-              <button type="button" className={planView === "timeline" ? "active" : ""} onClick={() => setPlanView("timeline")}>Timeline</button>
-              <button type="button" className={planView === "map" ? "active" : ""} onClick={() => setPlanView("map")}><Icon name="pin" />Map</button>
-              <button type="button" className={planView === "polls" ? "active" : ""} onClick={() => setPlanView("polls")}>Group posts</button>
-            </div>
-          </div>
           {planView === "map" && <>
             <div className="map-day-filter" aria-label="Filter map by day">
               {["All days", ...dayOptions].map((day) => <button type="button" key={day} className={mapDay === day ? "active" : ""} onClick={() => setMapDay(day)}>{day}</button>)}
@@ -1645,12 +1659,7 @@ export default function TripPage() {
         </section>
       )}
 
-      {planView === "polls" && <>
-        <div className="polls-intro"><span className="eyebrow">Less back-and-forth. More going places.</span><h3>Your group's corner.</h3><p>Questions, activity votes, and conversations. All together here.</p></div>
-        <QuestionPolls tripId={tripId} userId={account.user.id} />
-        <ActivityPolls activities={activities} votesByActivity={votesByActivity} commentsByActivity={commentsByActivity} travelers={travelers} travelerId={currentTraveler?.id} onVote={castVote} onComment={addComment} onAdd={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }} onView={(id) => { setPlanView("timeline"); setTimeout(() => itemRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100); }} />
-      </>}
-
+      
       {activities.length === 0 && planView === "timeline" && (
         <div className="empty-state">
           <Icon name="sparkle" style={{ width: 22, height: 22, opacity: 0.5 }} />
@@ -1671,7 +1680,7 @@ export default function TripPage() {
         const items = group.items;
         const topId = topActivityIdPerDay[dayLabel];
         return (
-          <div key={dayLabel}>
+          <div key={dayLabel} id={`day-${dayLabel.replace(/\s+/g, "-")}`} className="day-anchor">
             <div className="day-label-row">
               <span className="day-label">{dayLabel}</span>
               {group.date && <span className="day-date">{fmtDay(group.date, "")}</span>}
@@ -1716,7 +1725,7 @@ export default function TripPage() {
                       </select>
                     )}
                   </div>
-                  <button className="timeline-discussion-link" onClick={() => { setPlanView("polls"); setTimeout(() => document.getElementById(`group-post-${a.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150); }}>Votes & conversation <span>View group post ↗</span></button>
+                  <button className="timeline-discussion-link" onClick={() => { switchTab("group", "polls"); setTimeout(() => document.getElementById(`group-post-${a.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150); }}>Votes & conversation <span>View group post ↗</span></button>
                   <div className="item-actions">
                     <a className="cal-btn map-action" href={mapsUrl(a)} target="_blank" rel="noreferrer"><Icon name="pin" />Open in Maps</a>
                     <button className="cal-btn" onClick={() => addActivityToCalendar(a)} title={a.day_date ? "Download calendar event" : "Add trip dates first"}><Icon name="cal" />{a.day_date ? "Add to calendar" : "Set dates for calendar"}</button>
@@ -1894,7 +1903,7 @@ export default function TripPage() {
       <section className={activeTab === "updates" ? "tab-panel" : "tab-panel is-hidden"}>
         <UpdatesFeed notifications={notifications} onOpen={(entry) => {
           if (entry.id.startsWith("cost-") || entry.id.startsWith("settlement-") || expenseOnly) switchTab("settle");
-          else { switchTab("plan"); setPlanView("polls"); }
+          else { switchTab("group", "polls"); }
         }} />
       </section>
 
@@ -1922,6 +1931,53 @@ export default function TripPage() {
           </div>
         </div>
       </section>
+
+      {activeTab === "overview" && !expenseOnly && <OverviewTab
+        tripName={tripDisplayName}
+        nextDestination={destinationInfo(tripDisplayName).term || tripDisplayName}
+        dateLabel={trip.start_date ? formatTripRange(trip.start_date, trip.end_date) : ""}
+        photo={destinationPhotos[heroPhotoIndex] || destinationInfo(tripDisplayName).photos[0]}
+        travelers={travelers}
+        features={features}
+        userId={account.user.id}
+        myTraveler={currentTraveler}
+        activities={activities}
+        canManage={canManageMembers}
+        onTab={(tab, sub) => switchTab(tab, sub)}
+        onMembers={openSharePanel}
+      />}
+      {activeTab === "plan" && !expenseOnly && planSection === "flights" && <FlightsTab features={features} userId={account.user.id} travelers={travelers} canManage={canManageMembers} />}
+      {activeTab === "plan" && !expenseOnly && planSection === "lodging" && <LodgingTab features={features} userId={account.user.id} canManage={canManageMembers} />}
+      {activeTab === "plan" && !expenseOnly && planSection === "schedule" && (
+        <ActionBar className="with-plus">
+          <span className="bar-label">{activities.length} {activities.length === 1 ? "idea" : "ideas"}</span>
+          <IconToggle value={planView === "map" ? "map" : "list"} onChange={(value) => setPlanView(value === "map" ? "map" : "timeline")} />
+          <PlusButton label="Add activity" onClick={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 80); }} />
+        </ActionBar>
+      )}
+      {activeTab === "places" && !expenseOnly && <PlacesTab
+        features={features}
+        tripName={tripDisplayName}
+        userId={account.user.id}
+        canManage={canManageMembers}
+        section={placesSection}
+        onSection={setPlacesSection}
+        onAddToSchedule={addItemToSchedule}
+        renderMap={(items) => <TripMap activities={items} selectedDay="All days" statusFor={() => "agreed"} onActivitySelect={() => {}} />}
+      />}
+      {activeTab === "group" && !expenseOnly && <GroupTab
+        features={features}
+        travelers={travelers}
+        myTraveler={currentTraveler}
+        section={groupSection}
+        onSection={setGroupSection}
+        pollsSlot={<>
+        <div className="polls-intro"><span className="eyebrow">Less back-and-forth. More going places.</span><h3>Your group's corner.</h3><p>Questions, activity votes, and conversations. All together here.</p></div>
+        <QuestionPolls tripId={tripId} userId={account.user.id} />
+        <ActivityPolls activities={activities} votesByActivity={votesByActivity} commentsByActivity={commentsByActivity} travelers={travelers} travelerId={currentTraveler?.id} onVote={castVote} onComment={addComment} onAdd={() => { switchTab("plan", "schedule"); setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 250); }} onView={(id) => { switchTab("plan", "schedule"); setPlanView("timeline"); setTimeout(() => itemRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100); }} />
+      </>}
+      />}
+      {activeTab === "wall" && <WallTab features={features} userId={account.user.id} travelers={travelers} myName={profileDraft.name || me} canManage={canManageMembers} onMembers={openSharePanel} />}
 
       <div className="footnote">Palvoya — private plans for authenticated group members.</div>
 
@@ -1969,14 +2025,16 @@ export default function TripPage() {
         <div className="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="remove-member-title" onClick={(event) => event.stopPropagation()}><div className="confirm-icon">×</div><h3 id="remove-member-title">Remove {memberToRemove.name}?</h3><p>They will no longer participate in new splits. Items they paid for must be reassigned first.</p><div className="confirm-actions"><button type="button" onClick={() => setMemberToRemove(null)}>Cancel</button><button type="button" className="danger-button" onClick={removeMember} disabled={removingMember}>{removingMember ? "Removing…" : "Remove member"}</button></div></div>
       </div>}
 
-      {activeTab === "plan" && !expenseOnly && <button className="fab" title="Add activity" onClick={() => { setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>
-        <Icon name="plus" style={{ width: 19, height: 19 }} /><span>Add activity</span>
-      </button>}
-      <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Main navigation">
-        <button className={`bottom-nav-item ${!expenseOnly && activeTab === "plan" ? "active" : ""}`} onClick={() => (expenseOnly || activeTab === "plan") ? router.push("/") : switchTab("plan")}><NavIcon name="plans" /><small>Plans</small></button>
-        <button className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
-        <button className={`bottom-nav-item ${activeTab === "updates" ? "active" : ""}`} onClick={() => switchTab("updates")}><UpdateBadge count={notifications.unread} /><small>Updates</small></button>
-        <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => switchTab("profile")}><NavIcon name="profile" /><small>Profile</small></button>
+      <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Main navigation" style={{ "--nav-cols": expenseOnly ? 3 : 6 }}>
+        {!expenseOnly && <>
+          <button data-nav="overview" aria-label="Overview" className={`bottom-nav-item ${activeTab === "overview" ? "active" : ""}`} onClick={() => (activeTab === "overview" ? router.push("/") : switchTab("overview"))}><NavIcon name="overview" /><small>Overview</small></button>
+          <button data-nav="plan" aria-label="Itinerary" className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="itinerary" /><small>Itinerary</small></button>
+          <button data-nav="places" aria-label="Places" className={`bottom-nav-item ${activeTab === "places" ? "active" : ""}`} onClick={() => switchTab("places")}><NavIcon name="places" /><small>Places</small></button>
+          <button data-nav="group" aria-label="Group" className={`bottom-nav-item ${activeTab === "group" ? "active" : ""}`} onClick={() => switchTab("group")}><NavIcon name="group" /><small>Group</small></button>
+        </>}
+        {expenseOnly && <button data-nav="home" aria-label="All groups" className="bottom-nav-item" onClick={() => router.push("/?view=settle")}><NavIcon name="overview" /><small>Groups</small></button>}
+        <button data-nav="settle" aria-label="Settle up" className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
+        <button data-nav="wall" aria-label="Wall" className={`bottom-nav-item ${activeTab === "wall" ? "active" : ""}`} onClick={() => switchTab("wall")}><NavIcon name="wall" /><small>Wall</small></button>
       </nav>
       <UpdateToast notification={notifications.toast} onOpen={() => { notifications.dismiss(); switchTab("updates"); }} onDismiss={notifications.dismiss} />
       <GuidedTour steps={expenseOnly ? GROUP_TOUR : TRIP_TOUR} storageKey={expenseOnly ? "palvoya-tour-group-v1" : "palvoya-tour-trip-v1"} tourId={expenseOnly ? "group" : "trip"} ready={!!trip} />
