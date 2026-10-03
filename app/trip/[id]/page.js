@@ -495,13 +495,10 @@ const TRIP_TOUR = [
   { target: ".rsvp-bar", title: "RSVP and invite your crew", body: "Answer the RSVP, then tap the guest count to see who's coming and share your invite link." },
   { target: `${TRIP_NAV}[data-nav="plan"]`, enter: `${TRIP_NAV}[data-nav="plan"]`, title: "Itinerary holds the days", body: "Your plan, day by day. Tap a date on the rail to jump straight to that day." },
   { target: ".action-bar", title: "Add to any day", body: "Tap + to drop in an activity. Flip the list to a map any time." },
-  { target: ".pill-tabs", title: "Schedule, flights and lodging", body: "Bring your flights together so everyone sees who lands when, and keep lodging in one place." },
-  { target: `${TRIP_NAV}[data-nav="places"]`, enter: `${TRIP_NAV}[data-nav="places"]`, title: "Places, events and Explore", body: "Save places and group them in collections, keep events you find, and browse ideas nearby." },
-  { target: `${TRIP_NAV}[data-nav="group"]`, enter: `${TRIP_NAV}[data-nav="group"]`, title: "Group is where you decide", body: "Tasks, polls and checklists, so nothing important gets lost in a chat." },
-  { target: ".action-bar", title: "Start one from the bottom", body: "The + makes a new task or checklist, whichever section you're on." },
+  { target: `${TRIP_NAV}[data-nav="places"]`, enter: `${TRIP_NAV}[data-nav="places"]`, title: "Places and Explore", body: "Save places and group them in collections, and browse ideas nearby." },
+  { target: `${TRIP_NAV}[data-nav="group"]`, enter: `${TRIP_NAV}[data-nav="group"]`, title: "Group is where you decide", body: "A wall to chat, plus tasks, polls and lists, so nothing gets lost." },
+  { target: ".action-bar", title: "Post or add from the bottom", body: "Post to the wall here. In Tasks and Lists, the + adds a new one. Type @ to mention someone." },
   { target: `${TRIP_NAV}[data-nav="settle"]`, enter: `${TRIP_NAV}[data-nav="settle"]`, title: "Settle up keeps it fair", body: "Type what you paid and the category and icon are picked for you. Palvoya works out who owes whom." },
-  { target: `${TRIP_NAV}[data-nav="wall"]`, enter: `${TRIP_NAV}[data-nav="wall"]`, title: "Trip Wall is where the group talks", body: "Updates, reactions and what you missed. Type @ to mention someone." },
-  { target: ".action-bar", title: "Say hi to the group", body: "Tap Post something… to share an update with everyone on the trip." },
   { enter: `${TRIP_NAV}[data-nav="overview"]`, title: "You're all set", body: "Invite your crew and start planning. Replay this tour from your profile any time." },
 ];
 const GROUP_TOUR = [
@@ -552,7 +549,7 @@ export default function TripPage() {
   });
   const [planSection, setPlanSection] = useState("schedule");
   const [placesSection, setPlacesSection] = useState("places");
-  const [groupSection, setGroupSection] = useState("tasks");
+  const [groupSection, setGroupSection] = useState("wall");
   const [currency, setCurrency] = useState("EUR");
   const notifications = useUpdateNotifications(account.user?.id, activeTab === "updates", tripId);
   const features = useTripFeatures(tripId, account.user?.id);
@@ -576,6 +573,10 @@ export default function TripPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [joinCodeText, setJoinCodeText] = useState("");
   const itemRefs = useRef({});
+  useEffect(() => {
+    // Old ?view=wall links land on Group > Wall for trips.
+    if (activeTab === "wall" && trip && !isExpenseGroupName(trip.name)) { setActiveTab("group"); setGroupSection("wall"); }
+  }, [activeTab, trip]);
   useEffect(() => {
     // The route map is the home of the itinerary once something has a location.
     if (autoMapRef.current || !activities.length) return;
@@ -836,6 +837,7 @@ export default function TripPage() {
   }
 
   function switchTab(nextTab, sub) {
+    if (nextTab === "wall" && !isExpenseGroupName(trip?.name)) { nextTab = "group"; sub = "wall"; }
     setActiveTab(nextTab);
     if (sub) {
       if (nextTab === "plan") setPlanSection(sub);
@@ -1956,6 +1958,7 @@ export default function TripPage() {
         onTab={(tab, sub) => switchTab(tab, sub)}
         onMembers={openSharePanel}
       />}
+      {activeTab === "plan" && !expenseOnly && planSection !== "schedule" && <PillTabs label="Travel" value={planSection} onChange={(id) => setPlanSection(id)} items={[{ id: "flights", label: "Flights" }, { id: "lodging", label: "Stays" }]} />}
       {activeTab === "plan" && !expenseOnly && planSection === "flights" && <FlightsTab features={features} userId={account.user.id} travelers={travelers} canManage={canManageMembers} />}
       {activeTab === "plan" && !expenseOnly && planSection === "lodging" && <LodgingTab features={features} userId={account.user.id} canManage={canManageMembers} />}
       {activeTab === "plan" && !expenseOnly && planSection === "schedule" && (
@@ -1981,13 +1984,14 @@ export default function TripPage() {
         myTraveler={currentTraveler}
         section={groupSection}
         onSection={setGroupSection}
+        wallSlot={<WallTab features={features} userId={account.user.id} travelers={travelers} myName={profileDraft.name || me} canManage={canManageMembers} onMembers={openSharePanel} />}
         pollsSlot={<>
         <div className="polls-intro"><span className="eyebrow">Less back-and-forth. More going places.</span><h3>Your group's corner.</h3><p>Questions, activity votes, and conversations. All together here.</p></div>
         <QuestionPolls tripId={tripId} userId={account.user.id} />
         <ActivityPolls activities={activities} votesByActivity={votesByActivity} commentsByActivity={commentsByActivity} travelers={travelers} travelerId={currentTraveler?.id} onVote={castVote} onComment={addComment} onAdd={() => { switchTab("plan", "schedule"); setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 250); }} onView={(id) => { switchTab("plan", "schedule"); setPlanView("timeline"); setTimeout(() => itemRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100); }} />
       </>}
       />}
-      {activeTab === "wall" && <WallTab features={features} userId={account.user.id} travelers={travelers} myName={profileDraft.name || me} canManage={canManageMembers} onMembers={openSharePanel} />}
+      {activeTab === "wall" && expenseOnly && <WallTab features={features} userId={account.user.id} travelers={travelers} myName={profileDraft.name || me} canManage={canManageMembers} onMembers={openSharePanel} />}
 
       <div className="footnote">Palvoya — private plans for authenticated group members.</div>
 
@@ -2035,7 +2039,7 @@ export default function TripPage() {
         <div className="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="remove-member-title" onClick={(event) => event.stopPropagation()}><div className="confirm-icon">×</div><h3 id="remove-member-title">Remove {memberToRemove.name}?</h3><p>They will no longer participate in new splits. Items they paid for must be reassigned first.</p><div className="confirm-actions"><button type="button" onClick={() => setMemberToRemove(null)}>Cancel</button><button type="button" className="danger-button" onClick={removeMember} disabled={removingMember}>{removingMember ? "Removing…" : "Remove member"}</button></div></div>
       </div>}
 
-      <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Main navigation" style={{ "--nav-cols": expenseOnly ? 3 : 6 }}>
+      <nav className="mobile-bottom-nav trip-bottom-nav" aria-label="Main navigation" style={{ "--nav-cols": expenseOnly ? 3 : 5 }}>
         {!expenseOnly && <>
           <button data-nav="overview" aria-label="Overview" className={`bottom-nav-item ${activeTab === "overview" ? "active" : ""}`} onClick={() => (activeTab === "overview" ? router.push("/") : switchTab("overview"))}><NavIcon name="overview" /><small>Overview</small></button>
           <button data-nav="plan" aria-label="Itinerary" className={`bottom-nav-item ${activeTab === "plan" ? "active" : ""}`} onClick={() => switchTab("plan")}><NavIcon name="itinerary" /><small>Itinerary</small></button>
@@ -2044,7 +2048,7 @@ export default function TripPage() {
         </>}
         {expenseOnly && <button data-nav="home" aria-label="All groups" className="bottom-nav-item" onClick={() => router.push("/?view=settle")}><NavIcon name="overview" /><small>Groups</small></button>}
         <button data-nav="settle" aria-label="Settle up" className={`bottom-nav-item ${activeTab === "settle" ? "active" : ""}`} onClick={() => switchTab("settle")}><NavIcon name="settle" /><small>Settle up</small></button>
-        <button data-nav="wall" aria-label="Wall" className={`bottom-nav-item ${activeTab === "wall" ? "active" : ""}`} onClick={() => switchTab("wall")}><NavIcon name="wall" /><small>Wall</small></button>
+        {expenseOnly && <button data-nav="wall" aria-label="Wall" className={`bottom-nav-item ${activeTab === "wall" ? "active" : ""}`} onClick={() => switchTab("wall")}><NavIcon name="wall" /><small>Wall</small></button>}
       </nav>
       <UpdateToast notification={notifications.toast} onOpen={() => { notifications.dismiss(); switchTab("updates"); }} onDismiss={notifications.dismiss} />
       <GuidedTour steps={expenseOnly ? GROUP_TOUR : TRIP_TOUR} storageKey={expenseOnly ? "palvoya-tour-group-v1" : "palvoya-tour-trip-v1"} tourId={expenseOnly ? "group" : "trip"} ready={!!trip} />
