@@ -607,15 +607,25 @@ export default function Home() {
 
   async function joinWithCode(event) {
     event.preventDefault();
-    const match = joinCode.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-    if (!match) { setJoinError("Paste the invite link or code your friend sent you."); return; }
+    const raw = joinCode.trim();
+    const uuid = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (!raw) { setJoinError("Enter the code your friend sent you."); return; }
     setJoinBusy(true);
     setJoinError("");
-    const { data, error: previewError } = await supabase.rpc("preview_trip_invite", { invite_token: match[0] });
+    let tripId = null;
+    let token = null;
+    if (uuid) {
+      const { data } = await supabase.rpc("preview_trip_invite", { invite_token: uuid[0] });
+      const found = Array.isArray(data) ? data[0] : data;
+      if (found?.trip_id) { tripId = found.trip_id; token = uuid[0]; }
+    } else {
+      const { data } = await supabase.rpc("join_code_lookup", { join_code: raw.replace(/[^a-z0-9]/gi, "") });
+      const found = Array.isArray(data) ? data[0] : data;
+      if (found?.trip_id) { tripId = found.trip_id; token = found.token; }
+    }
     setJoinBusy(false);
-    const found = Array.isArray(data) ? data[0] : data;
-    if (previewError || !found?.trip_id) { setJoinError("That invite is not valid or has expired. Ask for a new one."); return; }
-    router.push(`/trip/${found.trip_id}?invite=${match[0]}`);
+    if (!tripId) { setJoinError("That code isn't valid or has expired. Ask for a new one."); return; }
+    router.push(`/trip/${tripId}?invite=${token}`);
   }
 
   const savedTripsBlock = planTrips.length > 0 && (
@@ -850,7 +860,7 @@ export default function Home() {
       )}
       <Sheet open={joinOpen} title="Join with code" onClose={() => setJoinOpen(false)}>
         <form className="sheet-form" onSubmit={joinWithCode}>
-          <Field label="Invite link or code"><input autoFocus value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder="Paste the link you were sent" /></Field>
+          <Field label="Trip code"><input autoFocus autoCapitalize="characters" spellCheck={false} value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder="e.g. K7M2QX, or paste the link" /></Field>
           {joinError && <p className="form-error">{joinError}</p>}
           <button type="submit" className="sheet-submit" disabled={joinBusy || !joinCode.trim()}>{joinBusy ? "Checking…" : "Join trip"}</button>
         </form>
