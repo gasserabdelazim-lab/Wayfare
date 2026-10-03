@@ -570,6 +570,9 @@ export default function TripPage() {
   const [mapDay, setMapDay] = useState("All days");
   const [selectedDay, setSelectedDay] = useState("Day 1");
   const [openItemId, setOpenItemId] = useState(null);
+  const [tripIdeas, setTripIdeas] = useState({ state: "idle", items: [] });
+  const [confirmCost, setConfirmCost] = useState(null);
+  const [confirmSaving, setConfirmSaving] = useState(false);
   const dayPickedRef = useRef(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [tripFriends, setTripFriends] = useState([]);
@@ -593,6 +596,33 @@ export default function TripPage() {
     // Old ?view=wall links land on Group > Wall for trips.
     if (activeTab === "wall" && trip && !isExpenseGroupName(trip.name)) setActiveTab("group");
   }, [activeTab, trip]);
+  useEffect(() => {
+    // Trip-specific ideas, generated from the destination.
+    if (!trip?.name || isExpenseGroupName(trip.name)) return undefined;
+    const term = destinationInfo(displayGroupName(trip.name)).term;
+    if (!term) return undefined;
+    let cancelled = false;
+    setTripIdeas({ state: "loading", items: [] });
+    (async () => {
+      try {
+        const kinds = [["sights", 4], ["restaurants", 3], ["activities", 2]];
+        const lists = await Promise.all(kinds.map(async ([category, take]) => {
+          const response = await fetch(`/api/explore?place=${encodeURIComponent(term)}&category=${category}`);
+          if (!response.ok) return [];
+          const payload = await response.json();
+          return (payload.results || []).slice(0, take);
+        }));
+        if (cancelled) return;
+        const seen = new Set();
+        const items = lists.flat().filter((item) => { const key = item.name.toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true; });
+        setTripIdeas({ state: "ready", items });
+      } catch {
+        if (!cancelled) setTripIdeas({ state: "error", items: [] });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [trip?.name]);
+
   useEffect(() => {
     // Open on today's day when the trip is under way.
     if (dayPickedRef.current || !trip?.start_date) return;
@@ -1134,6 +1164,30 @@ export default function TripPage() {
     await load();
   }
 
+  function openConfirmCost(activity) {
+    const total = roundMoney(Number(activity.cost_pp || 0) * Math.max(1, travelers.length));
+    setConfirmCost({ id: activity.id, name: activity.name, payer: activity.paid_by || myTraveler()?.id || "", amount: total ? String(total) : "", confirmed: Boolean(activity.paid_by) });
+  }
+  async function saveConfirmCost(event) {
+    event.preventDefault();
+    if (!confirmCost || confirmSaving || !travelers.length) return;
+    const amount = parseFloat(String(confirmCost.amount).replace(/[^0-9.]/g, ""));
+    if (!(amount > 0) || !confirmCost.payer) return;
+    setConfirmSaving(true);
+    await updateActivity(confirmCost.id, { paid_by: confirmCost.payer, cost_pp: roundMoney(amount / travelers.length) });
+    setConfirmSaving(false);
+    setConfirmCost(null);
+    showNotice("Payment confirmed.");
+  }
+  async function resetActivityCost(mode) {
+    if (!confirmCost) return;
+    setConfirmSaving(true);
+    await updateActivity(confirmCost.id, mode === "remove" ? { paid_by: null, cost_pp: 0 } : { paid_by: null });
+    setConfirmSaving(false);
+    setConfirmCost(null);
+    showNotice(mode === "remove" ? "Cost removed." : "Moved back to estimates.");
+  }
+
   async function deleteActivity() {
     if (!deleteTarget || deleting) return;
     const target = deleteTarget;
@@ -1599,6 +1653,34 @@ export default function TripPage() {
 
   if (accessState === "denied" || !trip) return <main className="auth-shell"><section className="auth-welcome access-denied-card"><button type="button" className="auth-back-button" onClick={() => router.push("/")}>← Back to plans</button><div className="brand-mark dark">PALVOYA</div><span className="eyebrow">Private plan</span><h1>You don’t have access.</h1><p>{accessError || "Ask the owner to send you a secure invite link."}</p></section></main>;
 
+  function useIdea(item) {
+    const dayLabel = selectedDay === "All days" ? dayOptions[0] : selectedDay;
+    const idx = dayOptions.indexOf(dayLabel);
+    setNewActivity((current) => ({ ...current, name: item.name, location: [item.name, item.address].filter(Boolean).join(", "), latitude: item.latitude ?? null, longitude: item.longitude ?? null, day_label: dayLabel, day_date: idx >= 0 && trip?.start_date ? tripDayISO(trip.start_date, idx) : "" }));
+    setAddOpen(true);
+    setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+  }
+  function IdeaStrip() {
+    const usedNames = new Set(activities.map((x) => x.name.toLowerCase()));
+    const ideas = tripIdeas.items.filter((item) => !usedNames.has(item.name.toLowerCase())).slice(0, 8);
+    const city = destinationInfo(tripDisplayName).term || tripDisplayName;
+    if (tripIdeas.state === "loading") return <div className="suggestion-block"><div className="field-label">Finding ideas for {city}…</div></div>;
+    if (!ideas.length) return null;
+    return (
+      <div className="suggestion-block">
+        <div className="field-label" style={{ marginBottom: 8 }}>Ideas for {city}</div>
+        <div className="idea-scroll">
+          {ideas.map((item) => (
+            <button key={item.id} type="button" className="idea-chip" onClick={() => useIdea(item)}>
+              <strong>{item.name}</strong>
+              <small>{item.kind || "Nearby"}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const currentTraveler = myTraveler();
   const canManageMembers = currentTraveler?.role === "owner" || trip?.created_by === account.user?.id || travelers.length === 1;
   const addableFriends = tripFriends.filter((friend) => friend.status === "accepted" && !travelers.some((traveler) => traveler.user_id === friend.friend_id));
@@ -1667,8 +1749,8 @@ export default function TripPage() {
       </header>
       <div className="wrap trip-wrap">
       {activeTab === "plan" && !expenseOnly && activities.length > 0 && <div className="day-chips" role="tablist" aria-label="Choose a day">
-        {planView === "map" && <button type="button" role="tab" aria-selected={selectedDay === "All days"} className={selectedDay === "All days" ? "active" : ""} onClick={() => setSelectedDay("All days")}>All</button>}
-        {allDayLabels.map((day, index) => { const parts = chipParts(trip?.start_date, index); const isActive = (selectedDay === "All days" ? dayOptions[0] : selectedDay) === day && !(planView === "map" && selectedDay === "All days"); return <button type="button" role="tab" aria-selected={isActive} key={day} className={isActive ? "active" : ""} onClick={() => setSelectedDay(day)}>{parts && index < dayOptions.length ? <>{parts.weekday} <b>{parts.num}</b></> : <>{day}</>}</button>; })}
+        <button type="button" role="tab" aria-selected={selectedDay === "All days"} className={selectedDay === "All days" ? "active" : ""} onClick={() => setSelectedDay("All days")}>All</button>
+        {allDayLabels.map((day, index) => { const parts = chipParts(trip?.start_date, index); const isActive = selectedDay === day; return <button type="button" role="tab" aria-selected={isActive} key={day} className={isActive ? "active" : ""} onClick={() => setSelectedDay(day)}>{parts && index < dayOptions.length ? <>{parts.weekday} <b>{parts.num}</b></> : <>{day}</>}</button>; })}
       </div>}
       {(activeTab === "settle" || activeTab === "updates") && <div className="group-context-switch"><span><small>Current group</small><strong>{tripDisplayName}</strong></span></div>}
 
@@ -1697,18 +1779,12 @@ export default function TripPage() {
           <div className="empty-title">No activities yet</div>
           <div className="empty-sub">Create the first proposal, then invite friends to vote.</div>
           <button className="empty-primary" onClick={() => setAddOpen(true)}>Create an activity</button>
-          <div className="suggestion-row">
-            {SUGGESTIONS.slice(0, 5).map((s) => (
-              <button key={s.name} className="suggestion-chip" onClick={() => addActivity(s.name)}>
-                <Icon name="plus" style={{ width: 11, height: 11 }} />{s.name}
-              </button>
-            ))}
-          </div>
+          <IdeaStrip />
         </div>
       )}
 
       {!expenseOnly && planView !== "map" && activities.length > 0 && (() => {
-        const dayLabel = selectedDay === "All days" ? dayOptions[0] : selectedDay;
+        const renderDay = (dayLabel) => {
         const dayIndex = Math.max(0, allDayLabels.indexOf(dayLabel));
         const group = grouped.find(([label]) => label === dayLabel)?.[1];
         const items = sortByTime(group?.items || []);
@@ -1716,7 +1792,7 @@ export default function TripPage() {
         const heading = dateISO ? new Date(`${dateISO}T12:00:00`).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) : dayLabel;
         const topId = topActivityIdPerDay[dayLabel];
         return (
-          <div className="day-block">
+          <div className="day-block" key={dayLabel}>
             <div className="day-head">
               <h2>{heading}</h2>
               <span>{dateISO ? dayLabel.toUpperCase() : ""}</span>
@@ -1773,6 +1849,7 @@ export default function TripPage() {
                   </div>
                     {isOpen && (
                       <div className="entry-edit">
+                        <label className="inline-field reschedule-field"><Icon name="cal" /><span>Move to</span><select aria-label={`Move ${a.name} to another day`} value={a.day_label || ""} onChange={(event) => { const next = event.target.value; const idx = dayOptions.indexOf(next); updateActivity(a.id, { day_label: next, day_date: idx >= 0 && trip?.start_date ? tripDayISO(trip.start_date, idx) : null }); if (selectedDay !== "All days") setSelectedDay(next); }}>{a.day_label && !dayOptions.includes(a.day_label) && <option value={a.day_label}>{a.day_label}</option>}{dayOptions.map((day, i) => { const dt = formatTripDayDate(trip?.start_date, i); return <option key={day} value={day}>{dt ? `${day} · ${dt}` : day}</option>; })}</select></label>
                   <div className="item-meta activity-editors">
                     <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={editableLocation} tripName={tripDisplayName} onCommit={(location, place) => {
                       geocodingRef.current.delete(a.id);
@@ -1798,20 +1875,12 @@ export default function TripPage() {
             })}
           </div>
         );
+        };
+        const labels = selectedDay === "All days" ? allDayLabels.filter((label) => (grouped.find(([g]) => g === label)?.[1].items.length || 0) > 0) : [selectedDay];
+        return <>{labels.map(renderDay)}</>;
       })()}
 
-      {planView === "timeline" && activities.length > 0 && suggestionsToShow.length > 0 && (
-        <div className="suggestion-block">
-          <div className="field-label" style={{ marginBottom: 8 }}>Need ideas? Quick-add a suggestion</div>
-          <div className="suggestion-row">
-            {suggestionsToShow.map((s) => (
-              <button key={s.name} className="suggestion-chip" onClick={() => addActivity(s.name)}>
-                <Icon name="plus" style={{ width: 11, height: 11 }} />{s.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {!expenseOnly && planView !== "map" && activities.length > 0 && <IdeaStrip />}
 
       {addOpen && <>
       <div className="sec-head"><h2>Create an activity</h2><button className="close-composer" onClick={() => setAddOpen(false)}>Close</button></div>
@@ -1906,7 +1975,10 @@ export default function TripPage() {
               <span className="ledger-name">
                 {a.name} <span className="confirmed-tag">Confirmed</span> <span className="ledger-sub">— {money(a.cost_pp, 2)} pp{payer ? ` · paid by ${payer.name}` : ""}</span>
               </span>
-              <span className="ledger-amt">{money(a.cost_pp * travelers.length)}</span>
+              <span className="ledger-row-right">
+                <span className="ledger-amt">{money(a.cost_pp * travelers.length)}</span>
+                <button type="button" className="icon-btn labeled" onClick={() => openConfirmCost(a)}><Icon name="edit" style={{ width: 12, height: 12 }} />Edit</button>
+              </span>
             </div>
           );
         })}
@@ -1919,10 +1991,7 @@ export default function TripPage() {
                   {a.name} <span className="estimate-tag">Estimate</span> <span className="ledger-sub">— about {money(a.cost_pp, 2)} pp</span>
                 </span>
                 <span className="ledger-amt">~{money(a.cost_pp * travelers.length)}</span>
-                <select className="paid-select estimate-paid" aria-label={`Who paid for ${a.name}`} value="" onChange={(e) => e.target.value && updateActivity(a.id, { paid_by: e.target.value })}>
-                  <option value="">Mark paid by…</option>
-                  {travelers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
+                <button type="button" className="confirm-pay-button" onClick={() => openConfirmCost(a)}>Confirm payment</button>
               </div>
             ))}
           </div>
@@ -1939,8 +2008,8 @@ export default function TripPage() {
               </span>
               <span className="ledger-row-right">
                 <span className="expense-ledger-amounts"><b>{moneyIn(expense.amount, expense.expenseCurrency)}</b>{expense.expenseCurrency !== currency && <small>{money(expense.baseAmount)} total</small>}</span>
-                <button className="icon-btn" title="Edit cost" onClick={() => startEditExtraCost(expense)}><Icon name="edit" style={{ width: 12, height: 12 }} /></button>
-                <button className="icon-btn" title="Remove cost" onClick={() => setDeleteCostTarget(expense)}><Icon name="trash" style={{ width: 12, height: 12 }} /></button>
+                <button className="icon-btn labeled" title="Edit cost" onClick={() => startEditExtraCost(expense)}><Icon name="edit" style={{ width: 12, height: 12 }} />Edit</button>
+                <button className="icon-btn labeled danger" title="Remove cost" onClick={() => setDeleteCostTarget(expense)}><Icon name="trash" style={{ width: 12, height: 12 }} />Delete</button>
               </span>
             </div>
           );
@@ -2048,6 +2117,25 @@ export default function TripPage() {
           <p>This removes the activity, its votes, and its comments from the {tripDisplayName} plan.</p>
           <div className="confirm-actions"><button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button><button className="danger-button" onClick={deleteActivity} disabled={deleting}>{deleting ? "Deleting…" : "Delete activity"}</button></div>
         </div>
+      </div>}
+      {confirmCost && <div className="confirm-backdrop" role="presentation" onClick={() => !confirmSaving && setConfirmCost(null)}>
+        <form className="confirm-sheet cost-confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-cost-title" onClick={(event) => event.stopPropagation()} onSubmit={saveConfirmCost}>
+          <span className="eyebrow">{confirmCost.confirmed ? "Edit payment" : "Confirm payment"}</span>
+          <h3 id="confirm-cost-title">{confirmCost.name}</h3>
+          <label className="field-label">Who paid?</label>
+          <select className="paid-select" value={confirmCost.payer} onChange={(event) => setConfirmCost({ ...confirmCost, payer: event.target.value })}>
+            <option value="">Choose payer</option>
+            {travelers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <label className="field-label">How much was actually paid?</label>
+          <div className="expense-amount-input"><span>{CURRENCIES[currency].symbol}</span><input autoFocus type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" value={confirmCost.amount} onChange={(event) => setConfirmCost({ ...confirmCost, amount: event.target.value })} /></div>
+          {travelers.length > 0 && Number(confirmCost.amount) > 0 && <p className="cost-split-note">Split equally: {money(Number(confirmCost.amount) / travelers.length)} each across {travelers.length} {travelers.length === 1 ? "person" : "people"}.</p>}
+          <div className="confirm-actions"><button type="button" onClick={() => setConfirmCost(null)} disabled={confirmSaving}>Cancel</button><button type="submit" className="primary-button" disabled={confirmSaving || !confirmCost.payer || !(Number(confirmCost.amount) > 0)}>{confirmSaving ? "Saving…" : "Confirm"}</button></div>
+          <div className="cost-confirm-links">
+            {confirmCost.confirmed && <button type="button" onClick={() => resetActivityCost("estimate")} disabled={confirmSaving}>Back to estimate</button>}
+            <button type="button" className="danger-link" onClick={() => resetActivityCost("remove")} disabled={confirmSaving}>Remove this cost</button>
+          </div>
+        </form>
       </div>}
       {deleteCostTarget && <div className="confirm-backdrop" role="presentation" onClick={() => !deletingCost && setDeleteCostTarget(null)}>
         <div className="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-cost-title" onClick={(event) => event.stopPropagation()}>
