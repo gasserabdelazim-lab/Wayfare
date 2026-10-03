@@ -102,11 +102,40 @@ async function fromOverpass(filters, lat, lon) {
   throw new Error(lastError);
 }
 
+async function geocodeCity(name) {
+  for (const featuretype of ["city", ""]) {
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("q", name);
+    if (featuretype) url.searchParams.set("featuretype", featuretype);
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("addressdetails", "1");
+    url.searchParams.set("limit", "1");
+    url.searchParams.set("accept-language", "en");
+    const response = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(8000), next: { revalidate: 604800 } });
+    if (!response.ok) continue;
+    const [hit] = await response.json();
+    if (hit) {
+      const a = hit.address || {};
+      const label = [a.city || a.town || a.village || a.municipality || hit.name, a.country].filter(Boolean).join(", ");
+      return { label, latitude: Number(hit.lat), longitude: Number(hit.lon) };
+    }
+  }
+  return null;
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const lat = Number(searchParams.get("lat"));
-  const lon = Number(searchParams.get("lon"));
   const category = String(searchParams.get("category") || "coffee");
+  const place = String(searchParams.get("place") || "").trim().slice(0, 120);
+  let lat = Number(searchParams.get("lat"));
+  let lon = Number(searchParams.get("lon"));
+  let center = null;
+  if (place) {
+    try { center = await geocodeCity(place); } catch (error) { center = null; }
+    if (!center) return NextResponse.json({ results: [], error: "Destination not found." }, { status: 404 });
+    lat = center.latitude;
+    lon = center.longitude;
+  }
   if (!PHRASES[category] || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
     return NextResponse.json({ results: [] }, { status: 400 });
   }
@@ -135,5 +164,5 @@ export async function GET(request) {
   if (!results.length && problems.length) {
     return NextResponse.json({ results: [], error: "Explore is temporarily unavailable.", problems }, { status: 502 });
   }
-  return NextResponse.json({ results }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
+  return NextResponse.json({ results, center }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
 }
