@@ -11,6 +11,7 @@ import NavIcon from "../../../components/NavIcon";
 import ExpenseIcon from "../../../components/ExpenseIcon";
 import { inferExpense, expenseAppearance } from "../../../lib/expenseAppearance.mjs";
 import AccountPanel from "../../../components/AccountPanel";
+import GuidedTour from "../../../components/GuidedTour";
 import { destinationInfo, findDestinationPhotos } from "../../../lib/destinations";
 import { useWayfareAccount } from "../../../lib/useWayfareAccount";
 
@@ -476,6 +477,25 @@ function downloadIcs(activity) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+
+const TRIP_NAV = ".trip-bottom-nav .bottom-nav-item";
+const TRIP_TOUR = [
+  { target: ".compact-edit-trigger summary", title: "Trip details", body: "Rename the trip, set dates, currency and travellers from this small pencil, top right." },
+  { target: ".trip-day-planner", title: "Pick a day", body: "Choose a day to drop an activity into. Each card shows the date and how many ideas are in." },
+  { target: ".plan-view-toggle", title: "Timeline, map or posts", body: "Flip between the day-by-day timeline, the map, and group posts where everyone votes." },
+  { target: ".fab", title: "Add an activity", body: "Tap here any time to add a place or idea. The group can vote on it right away." },
+  { target: `${TRIP_NAV}:nth-child(2)`, enter: `${TRIP_NAV}:nth-child(2)`, title: "Settle up", body: "Type what you paid and the category and icon are detected for you. Palvoya works out who owes whom." },
+  { target: `${TRIP_NAV}:nth-child(3)`, enter: `${TRIP_NAV}:nth-child(3)`, title: "Trip updates", body: "Votes, expenses and edits from the group show up here as they happen." },
+  { target: `${TRIP_NAV}:nth-child(4)`, enter: `${TRIP_NAV}:nth-child(4)`, title: "Your profile", body: "Your details follow you across every plan. Replay this tour from here whenever you like." },
+  { enter: `${TRIP_NAV}:nth-child(1)`, title: "Say hi to the group", body: "Invite your crew and start planning. Tap Plans twice to head back home." },
+];
+const GROUP_TOUR = [
+  { target: ".compact-edit-trigger summary", title: "Group details", body: "Rename the group, change currency or add travellers from the pencil, top right." },
+  { target: `${TRIP_NAV}:nth-child(3)`, enter: `${TRIP_NAV}:nth-child(3)`, title: "Group updates", body: "Every expense and settlement shows up here so nobody misses a thing." },
+  { target: `${TRIP_NAV}:nth-child(4)`, enter: `${TRIP_NAV}:nth-child(4)`, title: "Your profile", body: "Your details follow you across every group. Replay this tour from here whenever you like." },
+  { enter: `${TRIP_NAV}:nth-child(2)`, title: "Add your first expense", body: "Type what you paid and Palvoya detects the category and icon for you." },
+];
 
 export default function TripPage() {
   const { id: tripId } = useParams();
@@ -1959,6 +1979,7 @@ export default function TripPage() {
         <button className={`bottom-nav-item ${activeTab === "profile" ? "active" : ""}`} onClick={() => switchTab("profile")}><NavIcon name="profile" /><small>Profile</small></button>
       </nav>
       <UpdateToast notification={notifications.toast} onOpen={() => { notifications.dismiss(); switchTab("updates"); }} onDismiss={notifications.dismiss} />
+      <GuidedTour steps={expenseOnly ? GROUP_TOUR : TRIP_TOUR} storageKey={expenseOnly ? "palvoya-tour-group-v1" : "palvoya-tour-trip-v1"} tourId={expenseOnly ? "group" : "trip"} ready={!!trip} />
       </div>
     </div>
   );
