@@ -62,6 +62,7 @@ function SavedPlaces({ features, tripName, userId, canManage, onAddToSchedule, r
   }
   async function schedule(place) {
     const ok = await onAddToSchedule({ name: place.name, location: place.address || place.name, latitude: place.latitude, longitude: place.longitude });
+    if (ok === null) return;
     setNotice(ok ? `${place.name} was added to the plan. Put it to a vote!` : "Couldn't add that to the schedule.");
     setTimeout(() => setNotice(""), 3200);
   }
@@ -141,6 +142,7 @@ function Events({ features, tripName, userId, canManage, onAddToSchedule }) {
   }
   async function schedule(ev) {
     const ok = await onAddToSchedule({ name: ev.title, location: ev.venue || null, latitude: null, longitude: null, when: ev.starts_at });
+    if (ok === null) return;
     setNotice(ok ? `${ev.title} was added to the plan. Put it to a vote!` : "Couldn't add that to the schedule.");
     setTimeout(() => setNotice(""), 3200);
   }
@@ -233,6 +235,7 @@ function Explore({ features, tripName, onAddToSchedule }) {
   }
   async function schedule(item) {
     const ok = await onAddToSchedule({ name: item.name, location: item.address || item.name, latitude: item.latitude, longitude: item.longitude });
+    if (ok === null) return;
     setNotice(ok ? `${item.name} was added to the plan. Put it to a vote!` : "Couldn't add that to the schedule.");
     setTimeout(() => setNotice(""), 3000);
   }
@@ -258,14 +261,11 @@ function Explore({ features, tripName, onAddToSchedule }) {
             <div className="explore-tile" style={{ "--tile": TILE_HUES[category] }}>
               <span>{item.name.slice(0, 1)}</span>
               {item.photo && <img src={item.photo} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+              {item.rating && <b className="explore-rating">★ {item.rating.toFixed(1)}</b>}
             </div>
             <strong>{item.name}</strong>
             </a>
-            {Number.isFinite(item.rating) && item.rating > 0 && <a className="explore-stars" href={item.mapsUrl || mapsLink(item, term)} target="_blank" rel="noopener noreferrer" title={item.ratingSource || "Google Maps rating"} aria-label={`${item.rating.toFixed(1)} out of 5 stars${item.ratingCount ? ` from ${item.ratingCount.toLocaleString()} reviews` : ''} on Google Maps`}>
-              <strong>{item.rating.toFixed(1)}</strong><span aria-hidden="true">★</span>
-              {item.ratingCount > 0 && <span>({item.ratingCount.toLocaleString()})</span>}
-              <small>Google</small>
-            </a>}
+            {item.rating && <em className="explore-reviews">{item.ratingCount.toLocaleString()} Google reviews</em>}
             <small>{[item.kind, item.address].filter(Boolean).join(" · ") || "Nearby"}</small>
             <div className="card-actions">
               <button type="button" disabled={savedNames.has(item.name.toLowerCase())} onClick={() => save(item)}>{savedNames.has(item.name.toLowerCase()) ? "Saved" : "Save"}</button>
@@ -279,13 +279,53 @@ function Explore({ features, tripName, onAddToSchedule }) {
   );
 }
 
-export default function PlacesTab({ features, tripName, userId, canManage, section, onSection, onAddToSchedule, renderMap }) {
+export default function PlacesTab({ features, tripName, userId, canManage, section, onSection, onAddToSchedule, renderMap, dayChoices = [], timeOptions = [] }) {
+  const [picking, setPicking] = useState(null);
+  const [pickDay, setPickDay] = useState("");
+  const [pickTime, setPickTime] = useState("");
+  const [adding, setAdding] = useState(false);
+  const resolver = useRef(null);
+  const askWhen = (item) => new Promise((resolve) => {
+    resolver.current = resolve;
+    setPickDay(dayChoices[0]?.label || "Day 1");
+    setPickTime("");
+    setPicking(item);
+  });
+  function cancelPick() { setPicking(null); resolver.current?.(null); resolver.current = null; }
+  async function confirmPick(event) {
+    event.preventDefault();
+    if (!picking || adding) return;
+    setAdding(true);
+    const choice = dayChoices.find((d) => d.label === pickDay);
+    const ok = await onAddToSchedule({ ...picking, day_label: pickDay, day_date: choice?.date || null, time_text: pickTime || null });
+    setAdding(false);
+    setPicking(null);
+    resolver.current?.(ok);
+    resolver.current = null;
+  }
   return (
     <div className="feature-pane">
       <PillTabs label="Places sections" value={section} onChange={onSection} items={[{ id: "explore", label: "Explore" }, { id: "places", label: "Saved" }]} />
       <Setup available={features.available || section === "explore"} />
-      {section === "places" && <SavedPlaces features={features} tripName={tripName} userId={userId} canManage={canManage} onAddToSchedule={onAddToSchedule} renderMap={renderMap} />}
-      {section === "explore" && <Explore features={features} tripName={tripName} onAddToSchedule={onAddToSchedule} />}
+      {section === "places" && <SavedPlaces features={features} tripName={tripName} userId={userId} canManage={canManage} onAddToSchedule={askWhen} renderMap={renderMap} />}
+      {section === "explore" && <Explore features={features} tripName={tripName} onAddToSchedule={askWhen} />}
+      <Sheet open={Boolean(picking)} title="Add to plan" onClose={cancelPick}>
+        <form className="sheet-form" onSubmit={confirmPick}>
+          <p className="sheet-lead">{picking?.name}</p>
+          <Field label="Which day?">
+            <select value={pickDay} onChange={(e) => setPickDay(e.target.value)}>
+              {dayChoices.map((d) => <option key={d.label} value={d.label}>{d.text}</option>)}
+            </select>
+          </Field>
+          <Field label="What time?" hint="optional">
+            <select value={pickTime} onChange={(e) => setPickTime(e.target.value)}>
+              <option value="">Any time</option>
+              {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </Field>
+          <button type="submit" className="sheet-submit" disabled={adding}>{adding ? "Adding…" : `Add to ${pickDay || "plan"}`}</button>
+        </form>
+      </Sheet>
     </div>
   );
 }
