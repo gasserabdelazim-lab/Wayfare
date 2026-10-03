@@ -249,8 +249,13 @@ function Explore({ features, tripName, onAddToSchedule }) {
       {state === "ready" && <div className="explore-grid">
         {items.map((item) => (
           <article className="explore-card" key={item.id}>
-            <div className="explore-tile" style={{ "--tile": TILE_HUES[category] }}><span>{item.name.slice(0, 1)}</span></div>
+            <div className="explore-tile" style={{ "--tile": TILE_HUES[category] }}>
+              <span>{item.name.slice(0, 1)}</span>
+              {item.photo && <img src={item.photo} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+              {item.rating && <b className="explore-rating">★ {item.rating.toFixed(1)}</b>}
+            </div>
             <strong>{item.name}</strong>
+            {item.rating && <em className="explore-reviews">{item.ratingCount.toLocaleString()} Google reviews</em>}
             <small>{[item.kind, item.address].filter(Boolean).join(" · ") || "Nearby"}</small>
             <div className="card-actions">
               <button type="button" disabled={savedNames.has(item.name.toLowerCase())} onClick={() => save(item)}>{savedNames.has(item.name.toLowerCase()) ? "Saved" : "Save"}</button>
