@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sharedRatedPlaces } from "../../../lib/explore-ratings-cache";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -170,8 +171,9 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const category = String(searchParams.get("category") || "coffee");
   const place = String(searchParams.get("place") || "").trim().slice(0, 120);
-  let lat = Number(searchParams.get("lat"));
-  let lon = Number(searchParams.get("lon"));
+  let lat = searchParams.has("lat") ? Number(searchParams.get("lat")) : NaN;
+  let lon = searchParams.has("lon") ? Number(searchParams.get("lon")) : NaN;
+  if (!Object.hasOwn(PHRASES, category)) return NextResponse.json({ results: [] }, { status: 400 });
   let center = null;
   if (place) {
     try { center = await geocodeCity(place); } catch (error) { center = null; }
@@ -185,10 +187,22 @@ export async function GET(request) {
 
   const problems = [];
   let found = [];
+  let source = "osm";
+  const serpKey = process.env.SERPAPI_API_KEY;
   const googleKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (googleKey) {
+  if (serpKey) {
+    try {
+      found = await sharedRatedPlaces(category, lat, lon, center?.label || place);
+      if (found.length) source = "serpapi";
+    } catch {
+      problems.push("Free ratings temporarily unavailable");
+    }
+  }
+  // A depleted free account must never fall through to a billable Google call.
+  if (!serpKey && googleKey) {
     try {
       found = await fromGoogle(category, lat, lon, center?.label || place, googleKey);
+      if (found.length) source = "google";
     } catch (error) {
       problems.push(error.message);
     }
@@ -215,5 +229,5 @@ export async function GET(request) {
   if (!results.length && problems.length) {
     return NextResponse.json({ results: [], error: "Explore is temporarily unavailable.", problems }, { status: 502 });
   }
-  return NextResponse.json({ results, center, source: googleKey && results[0]?.rating ? "google" : "osm" }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
+  return NextResponse.json({ results, center, source }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
 }

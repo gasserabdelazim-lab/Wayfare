@@ -258,11 +258,14 @@ function Explore({ features, tripName, onAddToSchedule }) {
             <div className="explore-tile" style={{ "--tile": TILE_HUES[category] }}>
               <span>{item.name.slice(0, 1)}</span>
               {item.photo && <img src={item.photo} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
-              {item.rating && <b className="explore-rating">★ {item.rating.toFixed(1)}</b>}
             </div>
             <strong>{item.name}</strong>
             </a>
-            {item.rating && <em className="explore-reviews">{item.ratingCount.toLocaleString()} Google reviews</em>}
+            {Number.isFinite(item.rating) && item.rating > 0 && <a className="explore-stars" href={item.mapsUrl || mapsLink(item, term)} target="_blank" rel="noopener noreferrer" title={item.ratingSource || "Google Maps rating"} aria-label={`${item.rating.toFixed(1)} out of 5 stars${item.ratingCount ? ` from ${item.ratingCount.toLocaleString()} reviews` : ''} on Google Maps`}>
+              <strong>{item.rating.toFixed(1)}</strong><span aria-hidden="true">★</span>
+              {item.ratingCount > 0 && <span>({item.ratingCount.toLocaleString()})</span>}
+              <small>Google</small>
+            </a>}
             <small>{[item.kind, item.address].filter(Boolean).join(" · ") || "Nearby"}</small>
             <div className="card-actions">
               <button type="button" disabled={savedNames.has(item.name.toLowerCase())} onClick={() => save(item)}>{savedNames.has(item.name.toLowerCase()) ? "Saved" : "Save"}</button>
