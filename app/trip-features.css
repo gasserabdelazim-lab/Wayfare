@@ -240,7 +240,7 @@
 .trip-wrap .trip-map-layout { grid-template-columns: minmax(0, 1fr); }
 .trip-wrap .trip-map-canvas { min-height: 280px; }
 .trip-wrap .trip-map-layout { min-height: 0; }
-.trip-wrap .trip-map-canvas, .trip-wrap .trip-map-canvas .leaflet-container { min-height: 300px; height: 300px; }
+.trip-wrap .trip-map-canvas, .trip-wrap .trip-map-canvas .leaflet-container { min-height: 240px; height: 240px; }
 
 .trip-code-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; padding: 14px 16px; border-radius: 20px; border: 1px solid rgba(139,108,255,.35); background: linear-gradient(135deg, rgba(31,209,204,.12), rgba(139,108,255,.14)); }
 .trip-code-row small { display: block; color: var(--gold); font-weight: 800; letter-spacing: .16em; font-size: 11px; }
