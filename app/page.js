@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import NavIcon from "../components/NavIcon";
 import ExpenseIcon from "../components/ExpenseIcon";
 import AccountPanel from "../components/AccountPanel";
+import GuidedTour from "../components/GuidedTour";
 import { UpdateBadge, UpdateToast, UpdatesFeed } from "../components/UpdateNotifications";
 import { useUpdateNotifications } from "../lib/useUpdateNotifications";
 import { destinationInfo, findDestinationPhotos } from "../lib/destinations";
@@ -34,6 +35,17 @@ const NAV_ITEMS = [
   { id: "settle", icon: "settle", label: "Settle up" },
   { id: "updates", icon: "updates", label: "Updates" },
   { id: "profile", icon: "profile", label: "Profile" },
+];
+
+
+const HOME_TOUR = [
+  { title: "Welcome to Palvoya", body: "Plan trips together, vote on ideas and split the costs. Here is a quick look around." },
+  { target: ".header-add-button", title: "Start something new", body: "Tap here to create a trip, or a group to just split everyday expenses." },
+  { target: ".home-bottom-nav .bottom-nav-item:nth-child(1)", enter: ".home-bottom-nav .bottom-nav-item:nth-child(1)", title: "Plans are your trips", body: "Every trip you plan lives here. Open one to build the itinerary with your crew." },
+  { target: ".home-bottom-nav .bottom-nav-item:nth-child(2)", enter: ".home-bottom-nav .bottom-nav-item:nth-child(2)", title: "Settle up keeps it fair", body: "Add what you paid and Palvoya picks the category and icon for you, then shows who owes whom." },
+  { target: ".home-bottom-nav .bottom-nav-item:nth-child(3)", enter: ".home-bottom-nav .bottom-nav-item:nth-child(3)", title: "Updates, all in one feed", body: "New votes, expenses and changes from your group land here. The badge counts what is unread." },
+  { target: ".home-bottom-nav .bottom-nav-item:nth-child(4)", enter: ".home-bottom-nav .bottom-nav-item:nth-child(4)", title: "Your profile", body: "Your name, avatar and account. You can replay this tour from here any time." },
+  { enter: ".home-bottom-nav .bottom-nav-item:nth-child(1)", title: "You are all set", body: "Create your first trip and invite the group. Have a great one." },
 ];
 
 const EXPENSE_GROUP_PREFIX = "WAYFARE_GROUP::";
@@ -794,6 +806,7 @@ export default function Home() {
       <nav className="mobile-bottom-nav home-bottom-nav" aria-label="Main navigation">
         {NAV_ITEMS.map((item) => <button key={item.id} className={`bottom-nav-item ${activeView === item.id ? "active" : ""}`} onClick={() => navigateView(item.id)}>{item.id === "updates" ? <UpdateBadge count={notifications.unread} /> : <NavIcon name={item.icon} />}<small>{item.label}</small></button>)}
       </nav>
+      <GuidedTour steps={HOME_TOUR} storageKey="palvoya-tour-home-v1" tourId="home" ready={tripsReady && !!account.user} />
     </main>
   );
 }
