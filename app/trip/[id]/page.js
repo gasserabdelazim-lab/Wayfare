@@ -1,4 +1,5 @@
 "use client";
+import DateRangePicker from "../../../components/DateRangePicker";
 import ActivityPolls from "../../../components/ActivityPolls";
 import QuestionPolls from "../../../components/QuestionPolls";
 import { UpdateBadge, UpdateToast, UpdatesFeed } from "../../../components/UpdateNotifications";
@@ -1631,11 +1632,8 @@ export default function TripPage() {
             <label className="field-label">Trip currency</label>
             <select aria-label="Trip currency" className="settings-select" value={currency} onChange={(event) => updateCurrency(event.target.value)}>{Object.entries(CURRENCIES).map(([code, item]) => <option key={code} value={code}>{code} · {item.symbol.trim()}</option>)}</select>
             <label className="field-label">Trip dates</label>
-            <div className="trip-profile-dates">
-              <label><span>Starts</span><input type="date" value={tripDateDraft.start} onChange={(event) => setTripDateDraft((current) => ({ ...current, start: event.target.value, end: current.end && current.end < event.target.value ? "" : current.end }))} /></label>
-              <label><span>Ends</span><input type="date" min={tripDateDraft.start || undefined} value={tripDateDraft.end} disabled={!tripDateDraft.start} onChange={(event) => setTripDateDraft((current) => ({ ...current, end: event.target.value }))} /></label>
-              <button type="button" onClick={updateTripDates}>Save dates</button>
-            </div>
+            <DateRangePicker start={tripDateDraft.start} end={tripDateDraft.end} onChange={(range) => setTripDateDraft(range)} />
+            <button type="button" className="save-dates-button" onClick={updateTripDates} disabled={!tripDateDraft.start || !tripDateDraft.end}>Save dates</button>
             <label className="field-label">Trip duration</label>
             <div className="profile-duration-control"><input key={tripDays} aria-label="Trip duration in days" type="number" min="1" max="30" defaultValue={tripDays} onBlur={(event) => updateTripDuration(event.target.value)} /><span>days · creates Day 1 to Day {tripDays}</span></div>
             <div className="profile-members"><div className="field-label">Travelers</div>{travelers.map((traveler) => <span key={traveler.id}><Avatar name={traveler.name} avatar={traveler.avatar} size={24} />{traveler.name}{traveler.role === "owner" && <small>Owner</small>}</span>)}</div>
@@ -1771,8 +1769,7 @@ export default function TripPage() {
         <label className="field-label">Activity <b>required</b></label>
         <input className={activityError && !newActivity.name.trim() ? "input-error" : ""} placeholder="e.g. Sagrada Família tour" value={newActivity.name} onChange={(e) => { setNewActivity({ ...newActivity, name: e.target.value }); setActivityError(""); }} />
         <div className="composer-grid">
-          <div><label className="field-label">Day</label><select className="time-select" aria-label="Activity day" value={newActivity.day_label} onChange={(e) => setNewActivity({ ...newActivity, day_label: e.target.value })}>{newActivity.day_label && !dayOptions.includes(newActivity.day_label) && <option value={newActivity.day_label}>{newActivity.day_label} (outside trip length)</option>}{dayOptions.map((day) => <option key={day} value={day}>{day}</option>)}</select></div>
-          <div><label className="field-label">Date</label><input aria-label="Activity date" type="date" value={newActivity.day_date} onChange={(e) => setNewActivity({ ...newActivity, day_date: e.target.value })} /></div>
+          <div><label className="field-label">Day</label><select className="time-select" aria-label="Activity day" value={newActivity.day_label} onChange={(e) => { const index = dayOptions.indexOf(e.target.value); setNewActivity({ ...newActivity, day_label: e.target.value, day_date: index >= 0 && trip?.start_date ? tripDayISO(trip.start_date, index) : "" }); }}>{newActivity.day_label && !dayOptions.includes(newActivity.day_label) && <option value={newActivity.day_label}>{newActivity.day_label} (outside trip length)</option>}{dayOptions.map((day, index) => { const dateText = formatTripDayDate(trip?.start_date, index); return <option key={day} value={day}>{dateText ? `${day} · ${dateText}` : day}</option>; })}</select></div>
           <div><label className="field-label">Time</label><select aria-label="Activity time" className="time-select" value={newActivity.time_text} onChange={(e) => setNewActivity({ ...newActivity, time_text: e.target.value })}><option value="">Select a time</option>{TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}</select></div>
           <div><label className="field-label">Cost per person</label><div className="composer-money-input"><span>{CURRENCIES[currency].symbol}</span><input aria-label="New activity cost per person" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0" value={newActivity.cost_pp} onFocus={(event) => event.currentTarget.select()} onChange={(e) => setNewActivity({ ...newActivity, cost_pp: e.target.value })} /></div></div>
         </div>
