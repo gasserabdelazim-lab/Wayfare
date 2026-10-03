@@ -16,7 +16,7 @@ function headline(status, count) {
   return count > 1 ? "Are you in?" : "Ready when you are";
 }
 
-export default function OverviewTab({ tripName, dateLabel, photo, travelers, features, userId, myTraveler, activities, nextDestination, onTab, onMembers, canManage }) {
+export default function OverviewTab({ tripName, dateLabel, photo, travelers, features, userId, myTraveler, activities, nextDestination, onTab, onMembers, canManage, joinCode, onCopyCode }) {
   const myRsvp = features.rsvps.find((r) => r.user_id === userId)?.status || "";
   const counts = useMemo(() => {
     const result = { going: 0, maybe: 0, not_going: 0 };
@@ -41,6 +41,12 @@ export default function OverviewTab({ tripName, dateLabel, photo, travelers, fea
         <h2>{headline(myRsvp, travelers.length)}</h2>
         <p>{nextDestination}{dateLabel ? ` · ${dateLabel}` : ""}</p>
       </section>
+
+      {joinCode && <section className="trip-code-row" aria-label="Trip join code">
+        <div><small>TRIP CODE</small><strong>{joinCode}</strong></div>
+        <button type="button" onClick={onCopyCode}>Copy</button>
+        <span>Friends enter it under "Join with code" on their home screen.</span>
+      </section>}
 
       <section className="who-card">
         <header>

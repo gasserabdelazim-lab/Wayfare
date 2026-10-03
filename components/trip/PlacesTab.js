@@ -190,6 +190,12 @@ function Events({ features, tripName, userId, canManage, onAddToSchedule }) {
 }
 
 /* ---------------- Explore ---------------- */
+function mapsLink(item, term) {
+  const query = [item.name, item.address, term].filter(Boolean).join(" ");
+  const id = String(item.id || "").startsWith("g-") ? `&query_place_id=${encodeURIComponent(item.id.slice(2))}` : "";
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}${id}`;
+}
+
 function Explore({ features, tripName, onAddToSchedule }) {
   const term = destinationInfo(tripName).term || tripName;
   const [category, setCategory] = useState("coffee");
@@ -249,12 +255,14 @@ function Explore({ features, tripName, onAddToSchedule }) {
       {state === "ready" && <div className="explore-grid">
         {items.map((item) => (
           <article className="explore-card" key={item.id}>
+            <a className="explore-open" href={item.mapsUrl || mapsLink(item, term)} target="_blank" rel="noreferrer" aria-label={`Open ${item.name} in Google Maps`}>
             <div className="explore-tile" style={{ "--tile": TILE_HUES[category] }}>
               <span>{item.name.slice(0, 1)}</span>
               {item.photo && <img src={item.photo} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
               {item.rating && <b className="explore-rating">★ {item.rating.toFixed(1)}</b>}
             </div>
             <strong>{item.name}</strong>
+            </a>
             {item.rating && <em className="explore-reviews">{item.ratingCount.toLocaleString()} Google reviews</em>}
             <small>{[item.kind, item.address].filter(Boolean).join(" · ") || "Nearby"}</small>
             <div className="card-actions">
