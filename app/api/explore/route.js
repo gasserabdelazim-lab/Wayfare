@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 const FILTERS = {
   coffee: ['["amenity"="cafe"]'],
@@ -10,7 +11,11 @@ const FILTERS = {
   sights: ['["tourism"~"^(attraction|viewpoint)$"]', '["historic"~"^(monument|castle|memorial|ruins)$"]'],
 };
 
-const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+const ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
 
 function label(tags) {
   const kind = tags.cuisine || tags.amenity || tags.tourism || tags.leisure || tags.historic || "";
@@ -32,18 +37,19 @@ export async function GET(request) {
     return NextResponse.json({ results: [] }, { status: 400 });
   }
 
-  const radius = 3500;
-  const body = `[out:json][timeout:20];(${filters.map((f) => `nwr(around:${radius},${lat},${lon})${f}${f.includes('["name"]') ? "" : '["name"]'};`).join("")});out center tags 80;`;
+  const radius = 2500;
+  const body = `[out:json][timeout:20];(${filters.map((f) => `nwr(around:${radius},${lat},${lon})${f}${f.includes('["name"]') ? "" : '["name"]'};`).join("")});out center tags 60;`;
 
+  const attempts = [];
   for (const endpoint of ENDPOINTS) {
     try {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "Palvoya explore" },
         body: `data=${encodeURIComponent(body)}`,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(9000),
       });
-      if (!response.ok) continue;
+      if (!response.ok) { attempts.push(`${new URL(endpoint).host}:${response.status}`); continue; }
       const payload = await response.json();
       const seen = new Set();
       const results = (payload.elements || [])
@@ -71,8 +77,8 @@ export async function GET(request) {
         .slice(0, 30);
       return NextResponse.json({ results }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
     } catch (error) {
-      // try the next mirror
+      attempts.push(`${new URL(endpoint).host}:${error?.name || "error"}`);
     }
   }
-  return NextResponse.json({ results: [], error: "Explore is temporarily unavailable." }, { status: 502 });
+  return NextResponse.json({ results: [], error: "Explore is temporarily unavailable.", attempts }, { status: 502 });
 }
