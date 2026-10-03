@@ -241,3 +241,11 @@
 .trip-wrap .trip-map-canvas { min-height: 280px; }
 .trip-wrap .trip-map-layout { min-height: 0; }
 .trip-wrap .trip-map-canvas, .trip-wrap .trip-map-canvas .leaflet-container { min-height: 300px; height: 300px; }
+
+.trip-code-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; padding: 14px 16px; border-radius: 20px; border: 1px solid rgba(139,108,255,.35); background: linear-gradient(135deg, rgba(31,209,204,.12), rgba(139,108,255,.14)); }
+.trip-code-row small { display: block; color: var(--gold); font-weight: 800; letter-spacing: .16em; font-size: 11px; }
+.trip-code-row strong { font: 800 28px var(--font-display); letter-spacing: .2em; color: #fff; }
+.trip-code-row button { min-height: 38px; padding: 0 18px; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--teal), var(--purple)); color: #06141f; font-weight: 800; cursor: pointer; }
+.trip-code-row span { grid-column: 1 / -1; color: #9fb4c4; font-size: 12px; }
+.explore-open { display: block; color: inherit; text-decoration: none; }
+.explore-open:hover strong { text-decoration: underline; }
