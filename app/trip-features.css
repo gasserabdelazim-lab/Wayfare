@@ -354,3 +354,23 @@
 .entry .vote-row { margin-top: 12px; }
 .entry-edit { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line-strong); }
 @media (max-width: 380px) { .entry { grid-template-columns: 62px minmax(0, 1fr); gap: 8px; } }
+
+/* ---------- v5 ---------- */
+.idea-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.idea-scroll::-webkit-scrollbar { display: none; }
+.idea-chip { flex: 0 0 auto; max-width: 190px; text-align: left; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--line-strong); background: var(--paper-2); color: var(--ink); cursor: pointer; display: grid; gap: 2px; }
+.idea-chip strong { font-size: 14px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.idea-chip small { color: var(--teal); font-size: 12px; text-transform: capitalize; }
+.suggestion-block { margin-top: 18px; }
+.reschedule-field { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.reschedule-field span { color: #9fb4c4; font-size: 13px; font-weight: 700; }
+.reschedule-field select { flex: 1; min-height: 40px; }
+.icon-btn.labeled { width: auto; height: auto; min-height: 32px; padding: 0 10px; gap: 5px; display: inline-flex; align-items: center; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.icon-btn.labeled.danger { color: var(--coral); }
+.confirm-pay-button { flex: 1 1 100%; min-height: 40px; border: 0; border-radius: 12px; background: linear-gradient(135deg, var(--teal), var(--purple)); color: #06141f; font-weight: 800; cursor: pointer; }
+.cost-confirm-sheet { display: grid; gap: 8px; text-align: left; }
+.cost-confirm-sheet h3 { margin: 0 0 4px; }
+.cost-split-note { margin: 2px 0 6px; color: #9fb4c4; font-size: 13px; }
+.cost-confirm-links { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.cost-confirm-links button { border: 0; background: transparent; color: var(--teal); font-weight: 700; cursor: pointer; padding: 6px 0; }
+.cost-confirm-links .danger-link { color: var(--coral); margin-left: auto; }
