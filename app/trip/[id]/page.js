@@ -562,6 +562,7 @@ export default function TripPage() {
   const [heroPhotoIndex, setHeroPhotoIndex] = useState(0);
   const [planView, setPlanView] = useState("timeline");
   const [mapDay, setMapDay] = useState("All days");
+  const autoMapRef = useRef(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [tripFriends, setTripFriends] = useState([]);
   const [addingFriendId, setAddingFriendId] = useState(null);
@@ -573,7 +574,14 @@ export default function TripPage() {
   const [accessError, setAccessError] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [joinCodeText, setJoinCodeText] = useState("");
   const itemRefs = useRef({});
+  useEffect(() => {
+    // The route map is the home of the itinerary once something has a location.
+    if (autoMapRef.current || !activities.length) return;
+    autoMapRef.current = true;
+    if (activities.some((a) => a.latitude != null && a.longitude != null)) setPlanView("map");
+  }, [activities]);
   const addFormRef = useRef(null);
   const geocodingRef = useRef(new Set());
   const destinationPhotos = useDestinationPhotos(displayGroupName(trip?.name));
@@ -952,6 +960,8 @@ export default function TripPage() {
     }
     const nextUrl = `${window.location.origin}/trip/${tripId}?invite=${data}`;
     setInviteUrl(nextUrl);
+    const codeResult = await supabase.rpc("get_trip_join_code", { target_trip: tripId });
+    if (!codeResult.error && codeResult.data) setJoinCodeText(codeResult.data);
     return nextUrl;
   }
 
@@ -1579,6 +1589,11 @@ export default function TripPage() {
         </div>
       )}
       <header className="trip-topbar">
+        <button type="button" className="topbar-icon topbar-back" aria-label="Back" onClick={() => {
+          if (activeTab === "plan" && planSection !== "schedule") { setPlanSection("schedule"); switchTab("overview"); return; }
+          if (activeTab === "profile" || activeTab === "updates") { switchTab(expenseOnly ? "settle" : "overview"); return; }
+          router.push(expenseOnly ? "/?view=settle" : "/");
+        }}><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></button>
         <button type="button" className="topbar-avatar" onClick={() => switchTab("profile")} aria-label="Open your profile"><Avatar name={profileDraft.name || me} avatar={currentTraveler?.avatar} size={44} /></button>
         <h1 className="topbar-title">{tripDisplayName}</h1>
         <button type="button" className="topbar-icon" onClick={() => switchTab("updates")} aria-label={notifications.unread ? `${notifications.unread} unread updates` : "Updates"}>
@@ -1590,6 +1605,7 @@ export default function TripPage() {
           <div className="topbar-menu-links">
             <button type="button" onClick={() => router.push(expenseOnly ? "/?view=settle" : "/")}>{expenseOnly ? "All groups" : "All trips"}</button>
             <button type="button" onClick={openSharePanel}>{canManageMembers ? "Invite friends" : "Members"}</button>
+            <button type="button" onClick={() => switchTab("profile")}>Your profile</button>
           </div>
           {expenseOnly ? (
           <div className="trip-details-body">
@@ -1629,15 +1645,9 @@ export default function TripPage() {
         </details>
       </header>
       <div className="wrap trip-wrap">
-      {activeTab === "plan" && !expenseOnly && <PillTabs label="Itinerary sections" value={planSection} onChange={(id) => setPlanSection(id)} items={[{ id: "schedule", label: "Schedule" }, { id: "flights", label: "Flights" }, { id: "lodging", label: "Lodging" }]} />}
       {activeTab === "plan" && !expenseOnly && planSection === "schedule" && <div className="day-rail" role="group" aria-label="Jump to a day">{dayOptions.map((day, index) => { const dateText = formatTripDayDate(trip.start_date, index); return <button type="button" key={day} onClick={() => { setPlanView("timeline"); setTimeout(() => document.getElementById(`day-${day.replace(/\s+/g, "-")}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }}><strong>{dateText || day}</strong><small>{dateText ? day : ""}</small></button>; })}</div>}
       {(activeTab === "settle" || activeTab === "updates") && <div className="group-context-switch"><span><small>Current group</small><strong>{tripDisplayName}</strong></span></div>}
-      {activeTab === "plan" && planSection === "schedule" && <div className="trip-summary">
-        <div><strong>{counts.agreed}</strong><span>Approved</span></div>
-        <div><strong>{counts.contested}</strong><span>Needs a vote</span></div>
-        <div><strong>{counts.waiting}</strong><span>New ideas</span></div>
-        <div className="summary-budget"><strong>{money(share)}</strong><span>Estimated per person</span></div>
-      </div>}
+
 
       <section className={activeTab === "plan" && planSection === "schedule" && !expenseOnly ? "tab-panel" : "tab-panel is-hidden"}>
       {!expenseOnly && (
@@ -2003,7 +2013,7 @@ export default function TripPage() {
         <div className="confirm-sheet invite-sheet" role="dialog" aria-modal="true" aria-labelledby="invite-title" onClick={(event) => event.stopPropagation()}>
           <div className="invite-sheet-head"><div><span className="eyebrow">Plan together</span><h3 id="invite-title">Invite friends</h3></div><button type="button" aria-label="Close invite panel" onClick={() => setShareOpen(false)}>×</button></div>
           <p>{canManageMembers ? `Friends must sign in with their own account before they can join ${tripDisplayName}. This link expires after 30 days.` : `Only the owner can create an invite. These are the authenticated members of ${tripDisplayName}.`}</p>
-          {canManageMembers && <><div className="invite-link-row"><input aria-label="Invite link" readOnly value={inviteLoading ? "Creating secure invite…" : inviteUrl} placeholder="Creating secure invite…" /><button type="button" onClick={copyInviteLink} disabled={inviteLoading || !inviteUrl}>Copy</button></div><button type="button" className="share-primary-button" onClick={shareInviteLink} disabled={inviteLoading || !inviteUrl}>Share secure invite</button></>}
+          {canManageMembers && <><div className="invite-link-row"><input aria-label="Invite link" readOnly value={inviteLoading ? "Creating secure invite…" : inviteUrl} placeholder="Creating secure invite…" /><button type="button" onClick={copyInviteLink} disabled={inviteLoading || !inviteUrl}>Copy</button></div>{joinCodeText && <div className="join-code-card"><small>Trip code</small><strong>{joinCodeText}</strong><button type="button" onClick={async () => { try { await navigator.clipboard.writeText(joinCodeText); showNotice("Code copied."); } catch { /* clipboard blocked */ } }}>Copy code</button><span>Friends tap "Join with code" on their home screen.</span></div>}<button type="button" className="share-primary-button" onClick={shareInviteLink} disabled={inviteLoading || !inviteUrl}>Share secure invite</button></>}
           <div className="member-manager">
             <div className="member-manager-head"><strong>{expenseOnly ? "Group members" : "Travelers"}</strong><small>{travelers.length} joined</small></div>
             {travelers.map((traveler) => <div className="member-manager-row" key={traveler.id}><span><Avatar name={traveler.name} avatar={traveler.avatar} size={30} /><b>{traveler.name}</b>{traveler.role === "owner" && <small>Owner</small>}</span>{canManageMembers && traveler.id !== currentTraveler?.id && traveler.role !== "owner" && <button type="button" onClick={() => setMemberToRemove(traveler)}>Remove</button>}</div>)}
