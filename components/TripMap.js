@@ -17,12 +17,16 @@ function FitRoute({ points }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!points.length) return;
-    if (points.length === 1) {
-      map.setView(points[0], 14, { animate: true });
-      return;
-    }
-    map.fitBounds(points, { padding: [34, 34], maxZoom: 15, animate: true });
+    if (!points.length) return undefined;
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+      if (points.length === 1) {
+        map.setView(points[0], 14, { animate: false });
+        return;
+      }
+      map.fitBounds(points, { padding: [34, 34], maxZoom: 15, animate: false });
+    }, 200);
+    return () => clearTimeout(timer);
   }, [map, points]);
 
   return null;
