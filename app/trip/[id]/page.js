@@ -574,6 +574,11 @@ export default function TripPage() {
   const [joinCodeText, setJoinCodeText] = useState("");
   const itemRefs = useRef({});
   useEffect(() => {
+    // Members can see the trip's short join code on Overview.
+    if (activeTab !== "overview" || !trip?.id || !account.user?.id || joinCodeText) return;
+    supabase.rpc("get_trip_join_code", { target_trip: trip.id }).then(({ data, error }) => { if (!error && data) setJoinCodeText(data); });
+  }, [activeTab, trip?.id, account.user?.id, joinCodeText]);
+  useEffect(() => {
     // Old ?view=wall links land on Group > Wall for trips.
     if (activeTab === "wall" && trip && !isExpenseGroupName(trip.name)) { setActiveTab("group"); setGroupSection("wall"); }
   }, [activeTab, trip]);
@@ -1955,6 +1960,8 @@ export default function TripPage() {
         myTraveler={currentTraveler}
         activities={activities}
         canManage={canManageMembers}
+        joinCode={joinCodeText}
+        onCopyCode={async () => { try { await navigator.clipboard.writeText(joinCodeText); showNotice("Code copied."); } catch { /* clipboard blocked */ } }}
         onTab={(tab, sub) => switchTab(tab, sub)}
         onMembers={openSharePanel}
       />}
