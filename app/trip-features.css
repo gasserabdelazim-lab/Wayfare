@@ -268,3 +268,26 @@
 .people-list span { flex: 1; font-weight: 600; }
 .people-list em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--gold); text-transform: uppercase; }
 .home-bar .join-code-button { flex: 1; }
+
+/* ---------- date range picker ---------- */
+.range-picker { padding: 14px 12px 10px; border-radius: 18px; background: var(--paper); border: 1px solid var(--line); }
+.range-summary { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; font-weight: 700; color: #7f93a8; }
+.range-summary .has-value { color: var(--ink); }
+.range-summary i { font-style: normal; color: var(--teal); }
+.range-summary em { font-style: normal; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--teal); }
+.range-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.range-head strong { font: 700 17px var(--font-display); }
+.range-head button { width: 38px; height: 38px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
+.range-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; }
+.range-dow { text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .06em; color: #7f93a8; padding: 6px 0; }
+.range-day { position: relative; height: 42px; padding: 0; border: 0; background: transparent; color: var(--ink); font: 600 15px var(--font-body); cursor: pointer; display: grid; place-items: center; }
+.range-day > span { position: relative; z-index: 1; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; }
+.range-day.is-today > span { box-shadow: inset 0 0 0 1px var(--teal); }
+.range-day.has-band::before { content: ""; position: absolute; top: 2px; bottom: 2px; left: 0; right: 0; background: rgba(31,209,204,.16); }
+.range-day.is-start.has-band::before { left: 50%; }
+.range-day.is-end.has-band::before { right: 50%; }
+.range-day.is-start > span, .range-day.is-end > span { background: linear-gradient(135deg, var(--teal), var(--purple)); color: #06141f; font-weight: 800; }
+.save-dates-button { width: 100%; min-height: 44px; margin-top: 10px; border: 0; border-radius: 12px; background: linear-gradient(135deg, var(--teal), var(--purple)); color: #06141f; font-weight: 800; cursor: pointer; }
+.save-dates-button:disabled { opacity: .45; cursor: default; }
+.composer-grid select, .composer-grid input, .composer-grid .composer-money-input { height: 46px; box-sizing: border-box; width: 100%; }
+@media (max-width: 660px) { .composer-grid { grid-template-columns: 1fr 1fr !important; } }

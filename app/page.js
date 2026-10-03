@@ -1,4 +1,5 @@
 "use client";
+import DateRangePicker from "../components/DateRangePicker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
@@ -500,7 +501,7 @@ export default function Home() {
       name: tripName.trim(),
       duration_days: Math.max(1, Math.min(30, Number(tripDays) || 1)),
       start_date: tripStartDate || null,
-      end_date: tripEndDate || null,
+      end_date: tripEndDate || (tripStartDate ? endDateForDuration(tripStartDate, tripDays) : null),
       currency: profileCurrency,
       created_by: account.user?.id || null,
     }).select().single();
@@ -675,10 +676,12 @@ export default function Home() {
       <input placeholder="e.g. Barcelona with friends" value={tripName} onChange={(e) => setTripName(e.target.value)} />
       <div className="trip-date-card">
         <div className="trip-date-heading"><div><strong>Trip dates</strong><small>Optional — you can decide later</small></div><span>Calendar</span></div>
-        <div className="trip-date-grid">
-          <label><span>Starts</span><input aria-label="Trip start date" type="date" value={tripStartDate} onChange={(event) => changeTripStartDate(event.target.value)} /></label>
-          <label><span>Ends</span><input aria-label="Trip end date" type="date" min={tripStartDate || undefined} value={tripEndDate} onChange={(event) => changeTripEndDate(event.target.value)} disabled={!tripStartDate} /></label>
-        </div>
+        <DateRangePicker start={tripStartDate} end={tripEndDate} onChange={({ start, end }) => {
+          setTripStartDate(start);
+          setTripEndDate(end);
+          const days = inclusiveDays(start, end);
+          if (days) setTripDays(Math.min(30, days));
+        }} />
       </div>
       <label className="field-label">How many days?</label>
       <div className="duration-input"><button type="button" onClick={() => changeTripDuration(Number(tripDays) - 1)}>−</button><input aria-label="Trip duration in days" type="number" min="1" max="30" value={tripDays} onChange={(event) => changeTripDuration(event.target.value)} /><span>days</span><button type="button" onClick={() => changeTripDuration(Number(tripDays) + 1)}>＋</button></div>
