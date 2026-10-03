@@ -485,6 +485,22 @@ function downloadIcs(activity) {
 }
 
 
+const ENTRY_KIND = { food: "Eat", activity: "Visit", transport: "Travel", lodging: "Stay", shopping: "Shop", other: "Idea" };
+function chipParts(startDate, index) {
+  if (!startDate) return null;
+  const date = new Date(`${startDate}T12:00:00`);
+  date.setDate(date.getDate() + index);
+  return { weekday: date.toLocaleDateString([], { weekday: "short" }), num: date.getDate() };
+}
+function timeMinutes(text) {
+  const match = String(text || "").match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return 99999;
+  return ((Number(match[1]) % 12) + (match[3].toUpperCase() === "PM" ? 12 : 0)) * 60 + Number(match[2]);
+}
+function sortByTime(items) {
+  return items.map((item, index) => ({ item, index })).sort((x, y) => (timeMinutes(x.item.time_text) - timeMinutes(y.item.time_text)) || (x.index - y.index)).map((entry) => entry.item);
+}
+
 const TRIP_TABS = ["overview", "plan", "places", "group", "settle", "wall", "updates", "profile"];
 const TRIP_NAV = ".trip-bottom-nav .bottom-nav-item";
 const TRIP_TOUR = [
@@ -552,7 +568,9 @@ export default function TripPage() {
   const [heroPhotoIndex, setHeroPhotoIndex] = useState(0);
   const [planView, setPlanView] = useState("timeline");
   const [mapDay, setMapDay] = useState("All days");
-  const autoMapRef = useRef(false);
+  const [selectedDay, setSelectedDay] = useState("Day 1");
+  const [openItemId, setOpenItemId] = useState(null);
+  const dayPickedRef = useRef(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [tripFriends, setTripFriends] = useState([]);
   const [addingFriendId, setAddingFriendId] = useState(null);
@@ -576,11 +594,12 @@ export default function TripPage() {
     if (activeTab === "wall" && trip && !isExpenseGroupName(trip.name)) setActiveTab("group");
   }, [activeTab, trip]);
   useEffect(() => {
-    // The route map is the home of the itinerary once something has a location.
-    if (autoMapRef.current || !activities.length) return;
-    autoMapRef.current = true;
-    if (activities.some((a) => a.latitude != null && a.longitude != null)) setPlanView("map");
-  }, [activities]);
+    // Open on today's day when the trip is under way.
+    if (dayPickedRef.current || !trip?.start_date) return;
+    dayPickedRef.current = true;
+    const diff = Math.round((new Date().setHours(12, 0, 0, 0) - new Date(`${trip.start_date}T12:00:00`).getTime()) / 86400000);
+    if (diff >= 0 && diff < (Number(trip.duration_days) || 3)) setSelectedDay(`Day ${diff + 1}`);
+  }, [trip?.start_date]);
   const addFormRef = useRef(null);
   const geocodingRef = useRef(new Set());
   const destinationPhotos = useDestinationPhotos(displayGroupName(trip?.name));
@@ -1564,6 +1583,7 @@ export default function TripPage() {
   const tripDisplayName = displayGroupName(trip?.name);
   const tripDays = Math.max(1, Number(trip?.duration_days) || 3);
   const dayOptions = Array.from({ length: tripDays }, (_, index) => `Day ${index + 1}`);
+  const allDayLabels = [...dayOptions, ...grouped.map(([label]) => label).filter((label) => !dayOptions.includes(label))];
   const myBalance = balances.find((b) => b.id === myTraveler()?.id);
   const money = (value, decimals = 2) => `${CURRENCIES[currency].symbol}${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
   const moneyIn = (value, code, decimals = 2) => `${CURRENCIES[code]?.symbol || `${code} `}${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
@@ -1646,26 +1666,27 @@ export default function TripPage() {
         </details>
       </header>
       <div className="wrap trip-wrap">
-      {activeTab === "plan" && !expenseOnly && planSection === "schedule" && planView !== "map" && <div className="day-rail" role="group" aria-label="Jump to a day">{dayOptions.map((day, index) => { const dateText = formatTripDayDate(trip.start_date, index); return <button type="button" key={day} onClick={() => { setPlanView("timeline"); setTimeout(() => document.getElementById(`day-${day.replace(/\s+/g, "-")}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }}><strong>{dateText || day}</strong><small>{dateText ? day : ""}</small></button>; })}</div>}
+      {activeTab === "plan" && !expenseOnly && activities.length > 0 && <div className="day-chips" role="tablist" aria-label="Choose a day">
+        {planView === "map" && <button type="button" role="tab" aria-selected={selectedDay === "All days"} className={selectedDay === "All days" ? "active" : ""} onClick={() => setSelectedDay("All days")}>All</button>}
+        {allDayLabels.map((day, index) => { const parts = chipParts(trip?.start_date, index); const isActive = (selectedDay === "All days" ? dayOptions[0] : selectedDay) === day && !(planView === "map" && selectedDay === "All days"); return <button type="button" role="tab" aria-selected={isActive} key={day} className={isActive ? "active" : ""} onClick={() => setSelectedDay(day)}>{parts && index < dayOptions.length ? <>{parts.weekday} <b>{parts.num}</b></> : <>{day}</>}</button>; })}
+      </div>}
       {(activeTab === "settle" || activeTab === "updates") && <div className="group-context-switch"><span><small>Current group</small><strong>{tripDisplayName}</strong></span></div>}
 
 
       <section className={activeTab === "plan" && planSection === "schedule" && !expenseOnly ? "tab-panel" : "tab-panel is-hidden"}>
-      {!expenseOnly && (
-        <section className="map-workspace" aria-label="Map and timeline planner">
-          {planView === "map" && <>
-            <div className="map-day-filter" aria-label="Filter map by day">
-              {["All days", ...dayOptions].map((day) => <button type="button" key={day} className={mapDay === day ? "active" : ""} onClick={() => setMapDay(day)}>{day}</button>)}
-            </div>
-            <TripMap
-              activities={activities}
-              selectedDay={mapDay}
-              statusFor={statusOf}
-              onActivitySelect={(activityId) => {
-                setTimeout(() => itemRefs.current[activityId]?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
-              }}
-            />
-          </>}
+      {!expenseOnly && planView === "map" && activities.length > 0 && (
+        <section className="map-workspace" aria-label="Map and route">
+          <TripMap
+            activities={activities}
+            selectedDay={selectedDay}
+            statusFor={statusOf}
+            onActivitySelect={(activityId) => {
+              const target = activities.find((x) => x.id === activityId);
+              if (target?.day_label) setSelectedDay(target.day_label);
+              setPlanView("timeline");
+              setTimeout(() => itemRefs.current[activityId]?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+            }}
+          />
         </section>
       )}
 
@@ -1686,51 +1707,73 @@ export default function TripPage() {
         </div>
       )}
 
-      {grouped.map(([dayLabel, group]) => {
-        const items = group.items;
+      {!expenseOnly && planView !== "map" && activities.length > 0 && (() => {
+        const dayLabel = selectedDay === "All days" ? dayOptions[0] : selectedDay;
+        const dayIndex = Math.max(0, allDayLabels.indexOf(dayLabel));
+        const group = grouped.find(([label]) => label === dayLabel)?.[1];
+        const items = sortByTime(group?.items || []);
+        const dateISO = group?.date || tripDayISO(trip?.start_date, dayIndex);
+        const heading = dateISO ? new Date(`${dateISO}T12:00:00`).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) : dayLabel;
         const topId = topActivityIdPerDay[dayLabel];
         return (
-          <div key={dayLabel} id={`day-${dayLabel.replace(/\s+/g, "-")}`} className="day-anchor">
-            <div className="day-label-row">
-              <span className="day-label">{dayLabel}</span>
-              {group.date && <span className="day-date">{fmtDay(group.date, "")}</span>}
+          <div className="day-block">
+            <div className="day-head">
+              <h2>{heading}</h2>
+              <span>{dateISO ? dayLabel.toUpperCase() : ""}</span>
+              <button type="button" className="day-add" aria-label={`Add something to ${dayLabel}`} onClick={() => { setNewActivity((current) => ({ ...current, day_label: dayLabel, day_date: dateISO && dayIndex < dayOptions.length ? dateISO : "" })); setAddOpen(true); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 80); }}>+</button>
             </div>
+            {items.length === 0 && <p className="day-empty">Nothing planned for {dayLabel} yet. Tap + to add an idea, or find one in Explore.</p>}
             {items.map((a) => {
               const votes = votesByActivity[a.id] || [];
               const up = votes.filter((v) => v.value === "up").length;
               const status = statusOf(a.id);
               const isTop = a.id === topId && up > 0;
-              const isJustAdded = a.id === justAddedId;
               const editableLocation = a.location === "Add exact location" ? "" : (a.location || "");
               const editableTime = a.time_text === "Add time" ? "" : (a.time_text || "");
+              const look = expenseAppearance(a.name, null);
+              const kind = ENTRY_KIND[look.category] || "Idea";
+              const [placeName, ...placeRest] = editableLocation.split(",");
+              const payer = travelers.find((t) => t.id === a.paid_by);
+              const isOpen = openItemId === a.id;
               return (
-                <div
-                  className={`item${isJustAdded ? " item-flash" : ""}`}
-                  key={a.id}
-                  ref={(el) => (itemRefs.current[a.id] = el)}
-                >
-                  <div className="item-top">
-                    <span className="item-name">
-                      {isTop && <span className="top-pick" title="Group favorite"><Icon name="star" style={{ width: 12, height: 12 }} /></span>}
-                      {a.name}
-                    </span>
-                    {status !== "waiting" && <span className={`item-badge b-${status}`}>{status[0].toUpperCase() + status.slice(1)}</span>}
-                  </div>
-                  <p className="item-summary">
-                    <span>{editableTime || "Time not set"}</span>
-                    {editableLocation && <span>{editableLocation.split(",")[0]}</span>}
-                    {a.cost_pp > 0 && <span>{money(a.cost_pp, 0)} pp (estimate)</span>}
-                  </p>
-                  <div className="vote-row" role="group" aria-label={`Vote on ${a.name}`}>
+                <article className={`entry${a.id === justAddedId ? " item-flash" : ""}`} key={a.id} ref={(el) => (itemRefs.current[a.id] = el)}>
+                  <div className="entry-time">{editableTime && editableTime !== "Flexible" ? editableTime : (editableTime || "Any time")}</div>
+                  <div className="entry-body">
+                    <div className="entry-head">
+                      <span className="entry-kind"><ExpenseIcon name={look.icon} />{kind}</span>
+                      <button type="button" className={`entry-chevron${isOpen ? " open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "Hide details" : "Edit details"} onClick={() => setOpenItemId(isOpen ? null : a.id)}>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                      </button>
+                    </div>
+                    <h3 className="entry-title">{isTop && <span className="top-pick" title="Group favorite"><Icon name="star" style={{ width: 12, height: 12 }} /></span>}{a.name}</h3>
+                    {editableLocation && (
+                      <div className="entry-place">
+                        <div>
+                          <strong>{placeName}</strong>
+                          {placeRest.length > 0 && <small>{placeRest.join(",").trim()}</small>}
+                          <a href={mapsUrl(a)} target="_blank" rel="noreferrer">Google Maps</a>
+                        </div>
+                        <a className="entry-open" href={mapsUrl(a)} target="_blank" rel="noreferrer" aria-label={`Open ${a.name} in Google Maps`}>
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+                        </a>
+                      </div>
+                    )}
+                    {(a.cost_pp > 0 || status !== "waiting") && (
+                      <div className="entry-chips">
+                        {a.cost_pp > 0 && <span className={`cost-chip${a.paid_by ? " is-paid" : ""}`}>{money(a.cost_pp, a.cost_pp % 1 ? 2 : 0)} pp · {a.paid_by ? `paid by ${payer?.name || "someone"}` : "estimate"}</span>}
+                        {status !== "waiting" && <span className={`item-badge b-${status}`}>{status[0].toUpperCase() + status.slice(1)}</span>}
+                      </div>
+                    )}
+                    <div className="vote-row" role="group" aria-label={`Vote on ${a.name}`}>
                     {[["up", "I'm in"], ["meh", "Maybe"], ["down", "Pass"]].map(([value, label]) => {
                       const count = votes.filter((v) => v.value === value).length;
                       const mine = votes.find((v) => v.traveler_id === currentTraveler?.id)?.value === value;
                       return <button type="button" key={value} className={`vote-btn v-${value}${mine ? " is-mine" : ""}`} aria-pressed={mine} onClick={() => castVote(a.id, value)}>{label}{count > 0 && <b>{count}</b>}</button>;
                     })}
                   </div>
-                  <details className="item-details">
-                    <summary>Edit details</summary>
-                    <div className="item-meta activity-editors">
+                    {isOpen && (
+                      <div className="entry-edit">
+                  <div className="item-meta activity-editors">
                     <div className="inline-field inline-location-field"><Icon name="pin" /><PlacePicker compact value={editableLocation} tripName={tripDisplayName} onCommit={(location, place) => {
                       geocodingRef.current.delete(a.id);
                       updateActivity(a.id, { location: location || null, latitude: place.latitude, longitude: place.longitude });
@@ -1744,17 +1787,18 @@ export default function TripPage() {
                       </select>
                     )}
                   </div>
-                    <div className="item-actions">
-                      <a className="cal-btn map-action" href={mapsUrl(a)} target="_blank" rel="noreferrer"><Icon name="pin" />Open in Maps</a>
-                      <button type="button" className="cal-btn remove-activity" onClick={() => setDeleteTarget(a)}><Icon name="trash" style={{ width: 13, height: 13 }} />Remove</button>
-                    </div>
-                  </details>
-                </div>
+                        <div className="item-actions">
+                          <button type="button" className="cal-btn remove-activity" onClick={() => setDeleteTarget(a)}><Icon name="trash" style={{ width: 13, height: 13 }} />Remove</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </article>
               );
             })}
           </div>
         );
-      })}
+      })()}
 
       {planView === "timeline" && activities.length > 0 && suggestionsToShow.length > 0 && (
         <div className="suggestion-block">
