@@ -739,8 +739,8 @@ export default function TripPage() {
     } else {
       setExpenseSplits({});
     }
-    const { data: settlementData } = await supabase.from("settlements").select("*").eq("trip_id", tripId).order("settled_at", { ascending: false });
-    setSettlements(settlementData || []);
+    const { data: settlementData } = await supabase.from("settlements").select("*").eq("trip_id", tripId);
+    setSettlements([...(settlementData || [])].sort((a, b) => new Date(b.settled_at || b.created_at || 0) - new Date(a.settled_at || a.created_at || 0)));
     setCostForm((current) => ({
       ...current,
       currency: current.currency || tripData?.currency || "EUR",
