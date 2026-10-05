@@ -381,3 +381,6 @@
 .calendar-row { display: flex; justify-content: flex-end; margin: 0 0 8px; }
 .calendar-button { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-strong); background: var(--paper-2); color: var(--ink); border-radius: 999px; padding: 8px 14px; font: 600 13px "DM Sans", sans-serif; cursor: pointer; }
 .calendar-button:hover { border-color: var(--teal); color: var(--teal); }
+.entry-calendar { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; border: 0; background: transparent; color: var(--teal); font: 600 13px "DM Sans", sans-serif; padding: 4px 0; cursor: pointer; }
+.entry-calendar svg { width: 15px; height: 15px; }
+.entry-calendar:hover { text-decoration: underline; }
