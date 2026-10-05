@@ -1493,13 +1493,13 @@ export default function TripPage() {
     setCostForm({ desc: "", amt: "", paidBy: "", currency, exchangeRate: "1", splitMethod: "equal", category: "other", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
   }
 
-  function downloadCalendar() {
+  function downloadCalendar(only) {
     const esc = (v) => String(v || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
     const pad = (n) => String(n).padStart(2, "0");
     const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
     const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Palvoya//Trip plan//EN", "CALSCALE:GREGORIAN", `X-WR-CALNAME:${esc(tripDisplayName)}`];
     let count = 0;
-    activities.forEach((a) => {
+    (only ? [only] : activities).forEach((a) => {
       let iso = a.day_date;
       if (!iso && trip?.start_date) { const i = dayOptions.indexOf(a.day_label); if (i >= 0) iso = tripDayISO(trip.start_date, i); }
       if (!iso) return;
@@ -1521,16 +1521,16 @@ export default function TripPage() {
       lines.push("END:VEVENT");
       count += 1;
     });
-    if (!count) { showNotice("Give your plans a day first, then add them to your calendar.", "error"); return; }
+    if (!count) { showNotice("Choose a day for this plan first (use Move to), then add it to your calendar.", "error"); return; }
     lines.push("END:VCALENDAR");
     const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${(tripDisplayName || "trip").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`;
+    link.download = `${((only && only.name) || tripDisplayName || "trip").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`;
     document.body.appendChild(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    showNotice(`Added ${count} plan${count === 1 ? "" : "s"} to a calendar file. Open it to save them.`);
+    showNotice("Calendar file ready. Open it to save the event.");
   }
 
   async function markTransferPaid(transfer) {
@@ -1789,7 +1789,6 @@ export default function TripPage() {
         </details>
       </header>
       <div className="wrap trip-wrap">
-      {activeTab === "plan" && !expenseOnly && activities.length > 0 && <div className="calendar-row"><button type="button" className="calendar-button" onClick={downloadCalendar}><Icon name="cal" /> Add to calendar</button></div>}
       {activeTab === "plan" && !expenseOnly && activities.length > 0 && <div className="day-chips" role="tablist" aria-label="Choose a day">
         <button type="button" role="tab" aria-selected={selectedDay === "All days"} className={selectedDay === "All days" ? "active" : ""} onClick={() => setSelectedDay("All days")}>All</button>
         {allDayLabels.map((day, index) => { const parts = chipParts(trip?.start_date, index); const isActive = selectedDay === day; return <button type="button" role="tab" aria-selected={isActive} key={day} className={isActive ? "active" : ""} onClick={() => setSelectedDay(day)}>{parts && index < dayOptions.length ? <>{parts.weekday} <b>{parts.num}</b></> : <>{day}</>}</button>; })}
@@ -1889,6 +1888,7 @@ export default function TripPage() {
                       return <button type="button" key={value} className={`vote-btn v-${value}${mine ? " is-mine" : ""}`} aria-pressed={mine} onClick={() => castVote(a.id, value)}>{label}{count > 0 && <b>{count}</b>}</button>;
                     })}
                   </div>
+                    <button type="button" className="entry-calendar" onClick={() => downloadCalendar(a)}><Icon name="cal" /> Add to calendar</button>
                     {isOpen && (
                       <div className="entry-edit">
                         <label className="inline-field reschedule-field"><Icon name="cal" /><span>Move to</span><select aria-label={`Move ${a.name} to another day`} value={a.day_label || ""} onChange={(event) => { const next = event.target.value; const idx = dayOptions.indexOf(next); updateActivity(a.id, { day_label: next, day_date: idx >= 0 && trip?.start_date ? tripDayISO(trip.start_date, idx) : null }); if (selectedDay !== "All days") setSelectedDay(next); }}>{a.day_label && !dayOptions.includes(a.day_label) && <option value={a.day_label}>{a.day_label}</option>}{dayOptions.map((day, i) => { const dt = formatTripDayDate(trip?.start_date, i); return <option key={day} value={day}>{dt ? `${day} · ${dt}` : day}</option>; })}</select></label>
