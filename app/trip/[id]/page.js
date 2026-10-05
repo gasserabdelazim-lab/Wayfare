@@ -1493,6 +1493,46 @@ export default function TripPage() {
     setCostForm({ desc: "", amt: "", paidBy: "", currency, exchangeRate: "1", splitMethod: "equal", category: "other", participantIds: travelers.map((traveler) => traveler.id), splitValues: {}, notes: "", receiptData: "" });
   }
 
+  function downloadCalendar() {
+    const esc = (v) => String(v || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+    const pad = (n) => String(n).padStart(2, "0");
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Palvoya//Trip plan//EN", "CALSCALE:GREGORIAN", `X-WR-CALNAME:${esc(tripDisplayName)}`];
+    let count = 0;
+    activities.forEach((a) => {
+      let iso = a.day_date;
+      if (!iso && trip?.start_date) { const i = dayOptions.indexOf(a.day_label); if (i >= 0) iso = tripDayISO(trip.start_date, i); }
+      if (!iso) return;
+      const day = String(iso).slice(0, 10).replace(/-/g, "");
+      const mins = timeMinutes(a.time_text);
+      lines.push("BEGIN:VEVENT", `UID:${a.id}@palvoya`, `DTSTAMP:${stamp}`);
+      if (mins < 99999) {
+        const end = mins + 60;
+        const endDay = end >= 1440 ? (() => { const d = new Date(`${String(iso).slice(0, 10)}T12:00:00`); d.setDate(d.getDate() + 1); return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`; })() : day;
+        lines.push(`DTSTART:${day}T${pad(Math.floor(mins / 60))}${pad(mins % 60)}00`, `DTEND:${endDay}T${pad(Math.floor((end % 1440) / 60))}${pad(end % 60)}00`);
+      } else {
+        const d = new Date(`${String(iso).slice(0, 10)}T12:00:00`); d.setDate(d.getDate() + 1);
+        lines.push(`DTSTART;VALUE=DATE:${day}`, `DTEND;VALUE=DATE:${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`);
+      }
+      lines.push(`SUMMARY:${esc(a.name)}`);
+      if (a.location) lines.push(`LOCATION:${esc(a.location)}`);
+      const notes = [a.booking_info, Number(a.cost_pp) > 0 ? `Approx. ${money(a.cost_pp)} per person` : ""].filter(Boolean).join(" · ");
+      if (notes) lines.push(`DESCRIPTION:${esc(notes)}`);
+      lines.push("END:VEVENT");
+      count += 1;
+    });
+    if (!count) { showNotice("Give your plans a day first, then add them to your calendar.", "error"); return; }
+    lines.push("END:VCALENDAR");
+    const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${(tripDisplayName || "trip").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showNotice(`Added ${count} plan${count === 1 ? "" : "s"} to a calendar file. Open it to save them.`);
+  }
+
   async function markTransferPaid(transfer) {
     if (settlementSaving) return;
     setSettlementSaving(true);
@@ -1749,6 +1789,7 @@ export default function TripPage() {
         </details>
       </header>
       <div className="wrap trip-wrap">
+      {activeTab === "plan" && !expenseOnly && activities.length > 0 && <div className="calendar-row"><button type="button" className="calendar-button" onClick={downloadCalendar}><Icon name="cal" /> Add to calendar</button></div>}
       {activeTab === "plan" && !expenseOnly && activities.length > 0 && <div className="day-chips" role="tablist" aria-label="Choose a day">
         <button type="button" role="tab" aria-selected={selectedDay === "All days"} className={selectedDay === "All days" ? "active" : ""} onClick={() => setSelectedDay("All days")}>All</button>
         {allDayLabels.map((day, index) => { const parts = chipParts(trip?.start_date, index); const isActive = selectedDay === day; return <button type="button" role="tab" aria-selected={isActive} key={day} className={isActive ? "active" : ""} onClick={() => setSelectedDay(day)}>{parts && index < dayOptions.length ? <>{parts.weekday} <b>{parts.num}</b></> : <>{day}</>}</button>; })}
